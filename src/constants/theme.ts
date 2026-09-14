@@ -4,26 +4,26 @@
 
 export const colors = {
   // Primary
-  primary: '#1D4ED8',
-  primaryHover: '#1E40AF',
-  primarySubtle: '#EFF6FF',
-  primarySubtleBorder: 'transparent',
+  primary: "#1D4ED8",
+  primaryHover: "#1E40AF",
+  primarySubtle: "#EFF6FF",
+  primarySubtleBorder: "transparent",
 
   // Semantic
-  success: '#16A34A',
-  successSubtle: '#F0FDF4',
-  warning: '#D97706',
-  warningSubtle: '#FFFBEB',
-  danger: '#DC2626',
-  dangerSubtle: '#FEF2F2',
+  success: "#16A34A",
+  successSubtle: "#F0FDF4",
+  warning: "#D97706",
+  warningSubtle: "#FFFBEB",
+  danger: "#DC2626",
+  dangerSubtle: "#FEF2F2",
 
   // Neutrals & Surfaces (Light mode)
-  bgApp: '#F9FAFB',
-  bgSurface: '#FFFFFF',
-  border: '#E5E7EB',
-  textPrimary: '#111827',
-  textSecondary: '#6B7280',
-  textDisabled: '#9CA3AF',
+  bgApp: "#F9FAFB",
+  bgSurface: "#FFFFFF",
+  border: "#E5E7EB",
+  textPrimary: "#111827",
+  textSecondary: "#6B7280",
+  textDisabled: "#9CA3AF",
 } as const;
 
 export const spacing = {
@@ -33,10 +33,10 @@ export const spacing = {
   md: 16,
   lg: 20,
   xl: 24,
-  '2xl': 32,
-  '3xl': 40,
-  '4xl': 48,
-  '5xl': 64,
+  "2xl": 32,
+  "3xl": 40,
+  "4xl": 48,
+  "5xl": 64,
 } as const;
 
 export const radius = {
@@ -52,12 +52,12 @@ export const typography = {
   base: { fontSize: 16, lineHeight: 24 },
   lg: { fontSize: 18, lineHeight: 28 },
   xl: { fontSize: 20, lineHeight: 28 },
-  '2xl': { fontSize: 24, lineHeight: 32 },
+  "2xl": { fontSize: 24, lineHeight: 32 },
   weights: {
-    regular: '400' as const,
-    medium: '500' as const,
-    semibold: '600' as const,
-    bold: '700' as const,
+    regular: "400" as const,
+    medium: "500" as const,
+    semibold: "600" as const,
+    bold: "700" as const,
   },
 } as const;
 

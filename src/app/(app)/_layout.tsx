@@ -1,6 +1,6 @@
-import React from 'react';
-import { Stack } from 'expo-router';
-import { colors } from '../../constants';
+import React from "react";
+import { Stack } from "expo-router";
+import { colors } from "../../constants";
 
 export default function AppLayout() {
   return (
@@ -11,7 +11,7 @@ export default function AppLayout() {
         },
         headerTintColor: colors.textPrimary,
         headerTitleStyle: {
-          fontWeight: '600',
+          fontWeight: "600",
         },
         headerShadowVisible: false,
       }}
@@ -19,7 +19,7 @@ export default function AppLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: 'Cá nhân',
+          title: "Cá nhân",
         }}
       />
     </Stack>

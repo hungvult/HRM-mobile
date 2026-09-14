@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, StyleSheet, ViewProps } from 'react-native';
-import { colors, radius, spacing } from '../constants';
+import React from "react";
+import { View, StyleSheet, ViewProps } from "react-native";
+import { colors, radius, spacing } from "../constants";
 
 export interface CardProps extends ViewProps {
   children: React.ReactNode;
@@ -21,6 +21,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-    width: '100%',
+    width: "100%",
   },
 });

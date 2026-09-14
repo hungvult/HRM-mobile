@@ -1,6 +1,6 @@
-import { API_BASE_URL } from '../constants';
-import { ApiErrorResponse } from '../types';
-import { authStorage } from './auth-storage';
+import { API_BASE_URL } from "../constants";
+import { ApiErrorResponse } from "../types";
+import { authStorage } from "./auth-storage";
 
 export class ApiError extends Error {
   public status: number;
@@ -9,8 +9,8 @@ export class ApiError extends Error {
   public errors?: Array<{ field: string; message: string }>;
 
   constructor(data: ApiErrorResponse) {
-    super(data.message || 'Đã có lỗi xảy ra.');
-    this.name = 'ApiError';
+    super(data.message || "Đã có lỗi xảy ra.");
+    this.name = "ApiError";
     this.status = data.status;
     this.code = data.code;
     this.timestamp = data.timestamp;
@@ -22,11 +22,14 @@ interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
 }
 
-export async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+export async function request<T>(
+  endpoint: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const { requiresAuth = true, headers = {}, ...customConfig } = options;
 
   const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json; charset=utf-8',
+    "Content-Type": "application/json; charset=utf-8",
     ...(headers as Record<string, string>),
   };
 
@@ -38,7 +41,7 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
   }
 
   // Ensure leading slash
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
   let response: Response;
@@ -46,14 +49,14 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
     response = await fetch(url, {
       ...customConfig,
       headers: requestHeaders,
-      credentials: 'include', // send and receive HttpOnly cookies
+      credentials: "include", // send and receive HttpOnly cookies
     });
   } catch (error) {
     throw new ApiError({
       timestamp: new Date().toISOString(),
       status: 0,
-      code: 'NETWORK_ERROR',
-      message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.',
+      code: "NETWORK_ERROR",
+      message: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.",
       path: cleanEndpoint,
     });
   }
@@ -62,8 +65,8 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
     return {} as T;
   }
 
-  const contentType = response.headers.get('content-type');
-  const isJson = contentType && contentType.includes('application/json');
+  const contentType = response.headers.get("content-type");
+  const isJson = contentType && contentType.includes("application/json");
 
   if (!response.ok) {
     if (isJson) {
@@ -73,7 +76,7 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
     throw new ApiError({
       timestamp: new Date().toISOString(),
       status: response.status,
-      code: 'HTTP_ERROR',
+      code: "HTTP_ERROR",
       message: `Yêu cầu thất bại với mã lỗi ${response.status}`,
       path: cleanEndpoint,
     });

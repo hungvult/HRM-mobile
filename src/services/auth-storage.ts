@@ -1,8 +1,8 @@
-import * as SecureStore from 'expo-secure-store';
-import { AuthUser } from '../types';
+import * as SecureStore from "expo-secure-store";
+import { AuthUser } from "../types";
 
-const TOKEN_KEY = 'access_token';
-const USER_KEY = 'user_data';
+const TOKEN_KEY = "access_token";
+const USER_KEY = "user_data";
 
 export const authStorage = {
   async saveToken(token: string): Promise<void> {

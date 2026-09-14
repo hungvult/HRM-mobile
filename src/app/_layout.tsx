@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
-import { Slot, useRouter, useSegments } from 'expo-router';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider } from '../contexts/auth-context';
-import { useAuth } from '../hooks';
-import { colors } from '../constants';
+import React, { useEffect } from "react";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthProvider } from "../contexts/auth-context";
+import { useAuth } from "../hooks";
+import { colors } from "../constants";
 
 function RootNavigation() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -14,12 +14,12 @@ function RootNavigation() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === "(auth)";
 
     if (!isAuthenticated && !inAuthGroup) {
-      router.replace('/(auth)/login');
+      router.replace("/(auth)/login");
     } else if (isAuthenticated && inAuthGroup) {
-      router.replace('/(app)');
+      router.replace("/(app)");
     }
   }, [isAuthenticated, isLoading, segments, router]);
 
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     backgroundColor: colors.bgApp,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

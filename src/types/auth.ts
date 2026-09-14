@@ -2,7 +2,7 @@
  * Authentication and User Data Types
  */
 
-export type UserRole = 'ADMIN' | 'HR' | 'MANAGER' | 'EMPLOYEE';
+export type UserRole = "ADMIN" | "HR" | "MANAGER" | "EMPLOYEE";
 
 export interface Department {
   id: number;
@@ -27,12 +27,12 @@ export interface Employee {
   employeeCode: string;
   fullName: string;
   dateOfBirth?: string;
-  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  gender?: "MALE" | "FEMALE" | "OTHER";
   email?: string;
   phone?: string;
   address?: string;
   hireDate?: string;
-  employmentStatus: 'WORKING' | 'PROBATION' | 'RESIGNED' | 'TERMINATED';
+  employmentStatus: "WORKING" | "PROBATION" | "RESIGNED" | "TERMINATED";
   department?: Department | null;
   position?: Position | null;
   manager?: Manager | null;

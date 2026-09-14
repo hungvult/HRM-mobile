@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Pressable,
   Text,
@@ -7,10 +7,16 @@ import {
   ViewStyle,
   TextStyle,
   StyleProp,
-} from 'react-native';
-import { colors, radius, spacing, typography, touchTargets } from '../constants';
+} from "react-native";
+import {
+  colors,
+  radius,
+  spacing,
+  typography,
+  touchTargets,
+} from "../constants";
 
-export type ButtonVariant = 'primary' | 'outline' | 'danger' | 'text';
+export type ButtonVariant = "primary" | "outline" | "danger" | "text";
 
 export interface ButtonProps {
   title: string;
@@ -26,7 +32,7 @@ export interface ButtonProps {
 export function Button({
   title,
   onPress,
-  variant = 'primary',
+  variant = "primary",
   disabled = false,
   loading = false,
   fullWidth = true,
@@ -41,35 +47,35 @@ export function Button({
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.lg,
       borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
       opacity: isDisabled ? 0.6 : 1,
-      width: fullWidth ? '100%' : 'auto',
+      width: fullWidth ? "100%" : "auto",
     };
 
     switch (variant) {
-      case 'primary':
+      case "primary":
         return {
           ...base,
           backgroundColor: pressed ? colors.primaryHover : colors.primary,
         };
-      case 'outline':
+      case "outline":
         return {
           ...base,
-          backgroundColor: pressed ? colors.primarySubtle : 'transparent',
+          backgroundColor: pressed ? colors.primarySubtle : "transparent",
           borderWidth: 1,
           borderColor: colors.primary,
         };
-      case 'danger':
+      case "danger":
         return {
           ...base,
-          backgroundColor: pressed ? '#B91C1C' : colors.danger,
+          backgroundColor: pressed ? "#B91C1C" : colors.danger,
         };
-      case 'text':
+      case "text":
         return {
           ...base,
-          backgroundColor: pressed ? colors.primarySubtle : 'transparent',
+          backgroundColor: pressed ? colors.primarySubtle : "transparent",
         };
       default:
         return base;
@@ -78,14 +84,14 @@ export function Button({
 
   const getTextColor = (): string => {
     switch (variant) {
-      case 'primary':
-      case 'danger':
-        return '#FFFFFF';
-      case 'outline':
-      case 'text':
+      case "primary":
+      case "danger":
+        return "#FFFFFF";
+      case "outline":
+      case "text":
         return colors.primary;
       default:
-        return '#FFFFFF';
+        return "#FFFFFF";
     }
   };
 
@@ -104,13 +110,7 @@ export function Button({
           style={styles.spinner}
         />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            { color: getTextColor() },
-            textStyle,
-          ]}
-        >
+        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>
           {title}
         </Text>
       )}
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     fontSize: typography.base.fontSize,
     lineHeight: typography.base.lineHeight,
     fontWeight: typography.weights.medium,
-    textAlign: 'center',
+    textAlign: "center",
   },
   spinner: {
     marginVertical: spacing.xxs,

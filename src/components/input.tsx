@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,14 @@ import {
   TextInputProps,
   ViewStyle,
   StyleProp,
-} from 'react-native';
-import { colors, radius, spacing, typography, touchTargets } from '../constants';
+} from "react-native";
+import {
+  colors,
+  radius,
+  spacing,
+  typography,
+  touchTargets,
+} from "../constants";
 
 export interface InputProps extends TextInputProps {
   label: string;
@@ -66,9 +72,9 @@ export function Input({
             onPress={togglePasswordVisibility}
             style={styles.eyeButton}
             accessibilityRole="button"
-            accessibilityLabel={isSecure ? 'Hiện mật khẩu' : 'Ẩn mật khẩu'}
+            accessibilityLabel={isSecure ? "Hiện mật khẩu" : "Ẩn mật khẩu"}
           >
-            <Text style={styles.eyeText}>{isSecure ? 'Hiện' : 'Ẩn'}</Text>
+            <Text style={styles.eyeText}>{isSecure ? "Hiện" : "Ẩn"}</Text>
           </Pressable>
         )}
       </View>
@@ -84,7 +90,7 @@ export function Input({
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.md,
-    width: '100%',
+    width: "100%",
   },
   label: {
     fontSize: typography.sm.fontSize,
@@ -94,8 +100,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.bgSurface,
     borderRadius: radius.md,
     minHeight: touchTargets.min,
@@ -112,8 +118,8 @@ const styles = StyleSheet.create({
   eyeButton: {
     minHeight: touchTargets.min,
     minWidth: touchTargets.min,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: spacing.xs,
   },
   eyeText: {

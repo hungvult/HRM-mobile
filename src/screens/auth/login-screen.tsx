@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,27 +6,27 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Input, Card } from '../../components';
-import { colors, radius, spacing, typography } from '../../constants';
-import { useAuth } from '../../hooks';
-import { ApiError } from '../../services';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, Input, Card } from "../../components";
+import { colors, radius, spacing, typography } from "../../constants";
+import { useAuth } from "../../hooks";
+import { ApiError } from "../../services";
 
 export function LoginScreen() {
   const { login, isLoading } = useAuth();
-  const [usernameOrEmail, setUsernameOrEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
     const trimmedInput = usernameOrEmail.trim();
     if (!trimmedInput) {
-      setErrorMessage('Vui lòng nhập tên đăng nhập hoặc email.');
+      setErrorMessage("Vui lòng nhập tên đăng nhập hoặc email.");
       return;
     }
     if (!password) {
-      setErrorMessage('Vui lòng nhập mật khẩu.');
+      setErrorMessage("Vui lòng nhập mật khẩu.");
       return;
     }
 
@@ -44,7 +44,7 @@ export function LoginScreen() {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage('Không thể đăng nhập. Vui lòng thử lại sau.');
+        setErrorMessage("Không thể đăng nhập. Vui lòng thử lại sau.");
       }
     }
   };
@@ -53,7 +53,7 @@ export function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -135,32 +135,32 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing["2xl"],
   },
   header: {
-    alignItems: 'center',
-    marginBottom: spacing['2xl'],
+    alignItems: "center",
+    marginBottom: spacing["2xl"],
   },
   logoBadge: {
     width: 64,
     height: 64,
     borderRadius: radius.lg,
     backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.md,
   },
   logoText: {
     fontSize: 22,
     fontWeight: typography.weights.bold,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     letterSpacing: 1,
   },
   title: {
-    fontSize: typography['2xl'].fontSize,
-    lineHeight: typography['2xl'].lineHeight,
+    fontSize: typography["2xl"].fontSize,
+    lineHeight: typography["2xl"].lineHeight,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sm.fontSize,
     lineHeight: typography.sm.lineHeight,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   card: {
     padding: spacing.xl,
@@ -192,8 +192,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   footer: {
-    marginTop: spacing['2xl'],
-    alignItems: 'center',
+    marginTop: spacing["2xl"],
+    alignItems: "center",
   },
   footerText: {
     fontSize: typography.xs.fontSize,
