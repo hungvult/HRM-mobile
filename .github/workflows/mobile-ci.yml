@@ -42,6 +42,3 @@ jobs:
 
       - name: Expo Doctor
         run: npx expo-doctor
-
-      - name: Export web build
-        run: npx expo export --platform web
