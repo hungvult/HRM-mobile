@@ -40,22 +40,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (credentials: LoginRequest) => {
-    setIsLoading(true);
+    const response = await authService.login(credentials);
+    await authStorage.saveToken(response.accessToken);
+    setAccessToken(response.accessToken);
+
+    // Fetch full profile (including employee data) for the user
+    let fullUser: AuthUser = response.user;
     try {
-      const response = await authService.login(credentials);
-      setAccessToken(response.accessToken);
-      setUser(response.user);
-      await Promise.all([
-        authStorage.saveToken(response.accessToken),
-        authStorage.saveUser(response.user),
-      ]);
-    } finally {
-      setIsLoading(false);
+      fullUser = await authService.getMe();
+    } catch {
+      // If getMe fails, use the basic info from the login response
     }
+
+    setUser(fullUser);
+    await authStorage.saveUser(fullUser);
   }, []);
 
   const logout = useCallback(async () => {
-    setIsLoading(true);
     try {
       await authService.logout();
     } catch {
@@ -64,7 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(null);
       setUser(null);
       await authStorage.clearAuth();
-      setIsLoading(false);
     }
   }, []);
 
