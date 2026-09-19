@@ -14,9 +14,10 @@ import { useAuth } from "../../hooks";
 import { ApiError } from "../../services";
 
 export function LoginScreen() {
-  const { login, isLoading } = useAuth();
+  const { login } = useAuth();
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
@@ -31,6 +32,7 @@ export function LoginScreen() {
     }
 
     setErrorMessage(null);
+    setIsSubmitting(true);
 
     const deviceInfo = `${Platform.OS} ${Platform.Version}`;
 
@@ -46,6 +48,8 @@ export function LoginScreen() {
       } else {
         setErrorMessage("Không thể đăng nhập. Vui lòng thử lại sau.");
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -108,7 +112,7 @@ export function LoginScreen() {
             <Button
               title="Đăng nhập"
               onPress={handleLogin}
-              loading={isLoading}
+              loading={isSubmitting}
               style={styles.loginButton}
             />
           </Card>
