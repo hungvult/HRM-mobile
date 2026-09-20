@@ -23,6 +23,15 @@ export interface LoginResponse {
   user: LoginUser;
 }
 
+export interface RefreshTokenResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: {
+    id: number;
+  };
+}
+
 export interface ApiErrorResponse {
   timestamp: string;
   status: number;

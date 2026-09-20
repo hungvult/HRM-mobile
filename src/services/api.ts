@@ -21,11 +21,19 @@ export class ApiError extends Error {
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
   timeoutMs?: number;
+  _isRetry?: boolean;
+}
+
+type TokenRefresher = () => Promise<string>;
+let tokenRefresher: TokenRefresher | null = null;
+
+export function registerTokenRefresher(refresher: TokenRefresher) {
+  tokenRefresher = refresher;
 }
 
 export async function request<T>(
   endpoint: string,
-  options: RequestOptions = {},
+  options: RequestOptions = {}
 ): Promise<T> {
   const {
     requiresAuth = true,
@@ -40,7 +48,7 @@ export async function request<T>(
     ...(headers as Record<string, string>),
   };
 
-  if (requiresAuth) {
+  if (requiresAuth && !requestHeaders.Authorization) {
     const token = await authStorage.getToken();
     if (token) {
       requestHeaders.Authorization = `Bearer ${token}`;
@@ -89,6 +97,23 @@ export async function request<T>(
     });
   } finally {
     clearTimeout(timer);
+  }
+
+  if (
+    response.status === 401 &&
+    requiresAuth &&
+    !options._isRetry &&
+    tokenRefresher
+  ) {
+    const newToken = await tokenRefresher();
+    return await request<T>(endpoint, {
+      ...options,
+      _isRetry: true,
+      headers: {
+        ...headers,
+        Authorization: `Bearer ${newToken}`,
+      },
+    });
   }
 
   if (response.status === 204) {

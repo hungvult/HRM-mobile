@@ -17,11 +17,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    authService.onSessionExpired(() => {
+      setAccessToken(null);
+    });
+
+    authService.onTokenRefreshed((newToken) => {
+      setAccessToken(newToken);
+    });
+
     async function initAuth() {
       try {
         const savedToken = await authStorage.getToken();
         if (savedToken) {
-          setAccessToken(savedToken);
+          try {
+            const newToken = await authService.refreshAccessToken();
+            setAccessToken(newToken);
+          } catch (error: any) {
+            if (error?.code === "NETWORK_ERROR" || error?.status === 0) {
+              setAccessToken(savedToken);
+            } else {
+              await authStorage.clearAuth();
+              setAccessToken(null);
+            }
+          }
         }
       } catch {
         // ignore storage loading errors
@@ -30,6 +48,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     initAuth();
+
+    return () => {
+      authService.onSessionExpired(null);
+      authService.onTokenRefreshed(null);
+    };
   }, []);
 
   const login = useCallback(async (credentials: LoginRequest) => {
