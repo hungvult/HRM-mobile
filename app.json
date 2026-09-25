@@ -23,6 +23,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "78b8fdc9-43bb-45e1-9ff8-4e73283920c1"
+      }
+    },
+    "owner": "hunwannafly"
   }
 }
