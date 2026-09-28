@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "HRM Mobile",
+    "slug": "hrm-mobile",
+    "scheme": "hrm-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hrm.mobile"
+    },
+    "android": {
+      "package": "com.hrm.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "78b8fdc9-43bb-45e1-9ff8-4e73283920c1"
+      }
+    },
+    "owner": "hunwannafly"
+  }
+}
