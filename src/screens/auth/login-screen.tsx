@@ -41,7 +41,7 @@ function getFriendlyLoginError(err: ApiError): string {
         return "Mật khẩu phải có từ 8 đến 128 ký tự.";
       }
       const identityErr = err.errors.find(
-        (e) => e.field === "usernameOrEmail" || e.field === "username"
+        (e) => e.field === "usernameOrEmail" || e.field === "username",
       );
       if (identityErr) {
         return "Tên đăng nhập hoặc email phải có từ 3 đến 255 ký tự.";
@@ -88,7 +88,7 @@ export function LoginScreen() {
     }
     if (trimmedInput.length > 255) {
       setErrorMessage(
-        "Tên đăng nhập hoặc email không được vượt quá 255 ký tự."
+        "Tên đăng nhập hoặc email không được vượt quá 255 ký tự.",
       );
       return;
     }
