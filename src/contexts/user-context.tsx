@@ -16,6 +16,7 @@ export interface UserContextType {
   isRefreshing: boolean;
   error: string | null;
   refreshUser: () => Promise<void>;
+  updateUser: (updatedProfile: UserProfile) => void;
   clearUser: () => void;
 }
 
@@ -59,6 +60,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     await fetchProfile(true);
   }, [fetchProfile]);
 
+  const updateUser = useCallback((updatedProfile: UserProfile) => {
+    setUser(updatedProfile);
+  }, []);
+
   const clearUser = useCallback(() => {
     setUser(null);
     setError(null);
@@ -84,6 +89,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         isRefreshing,
         error,
         refreshUser,
+        updateUser,
         clearUser,
       }}
     >
