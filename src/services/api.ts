@@ -84,7 +84,7 @@ export async function request<T>(
         timestamp: new Date().toISOString(),
         status: 408,
         code: "TIMEOUT_ERROR",
-        message: `Quá thời gian chờ (10s) tới ${url}. Thiết bị không thể kết nối đến IP máy chủ này.`,
+        message: "Quá thời gian kết nối đến máy chủ. Vui lòng thử lại sau.",
         path: cleanEndpoint,
       });
     }
@@ -92,7 +92,8 @@ export async function request<T>(
       timestamp: new Date().toISOString(),
       status: 0,
       code: "NETWORK_ERROR",
-      message: `Không thể kết nối đến máy chủ (${url}). ${error?.message || "Vui lòng kiểm tra lại mạng."}`,
+      message:
+        "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng.",
       path: cleanEndpoint,
     });
   } finally {
