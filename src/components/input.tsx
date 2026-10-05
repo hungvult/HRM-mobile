@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, type Ref } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ export interface InputProps extends TextInputProps {
   helperText?: string;
   isPassword?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
+  inputRef?: Ref<TextInput>;
 }
 
 export function Input({
@@ -32,6 +33,9 @@ export function Input({
   isPassword = false,
   containerStyle,
   style,
+  inputRef,
+  onFocus,
+  onBlur,
   ...rest
 }: InputProps) {
   const [isSecure, setIsSecure] = useState<boolean>(isPassword);
@@ -60,12 +64,19 @@ export function Input({
         ]}
       >
         <TextInput
+          ref={inputRef}
           style={[styles.input, style]}
           placeholderTextColor={colors.textDisabled}
           secureTextEntry={isPassword ? isSecure : false}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
           {...rest}
+          onFocus={(event) => {
+            setIsFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setIsFocused(false);
+            onBlur?.(event);
+          }}
         />
         {isPassword && (
           <Pressable
