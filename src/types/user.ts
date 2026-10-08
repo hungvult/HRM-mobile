@@ -18,6 +18,9 @@ export interface Manager {
   fullName: string;
 }
 
+export type EmploymentStatus =
+  "WORKING" | "ON_LEAVE" | "TERMINATED" | "PROBATION" | "RESIGNED";
+
 export interface Employee {
   id: number;
   employeeCode: string;
@@ -28,7 +31,7 @@ export interface Employee {
   phone?: string;
   address?: string;
   hireDate?: string;
-  employmentStatus: "WORKING" | "PROBATION" | "RESIGNED" | "TERMINATED";
+  employmentStatus?: EmploymentStatus;
   department?: Department | null;
   position?: Position | null;
   manager?: Manager | null;
@@ -40,4 +43,9 @@ export interface UserProfile {
   email: string;
   roles: UserRole[];
   employee?: Employee | null;
+}
+
+export interface UpdateMyProfileRequest {
+  phone: string;
+  address: string;
 }
