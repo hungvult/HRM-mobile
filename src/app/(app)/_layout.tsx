@@ -22,6 +22,13 @@ export default function AppLayout() {
           title: "Cá nhân",
         }}
       />
+      <Stack.Screen
+        name="edit-profile"
+        options={{
+          title: "Chỉnh sửa thông tin",
+          headerBackTitle: "Quay lại",
+        }}
+      />
     </Stack>
   );
 }
