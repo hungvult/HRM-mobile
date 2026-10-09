@@ -33,7 +33,7 @@ export function registerTokenRefresher(refresher: TokenRefresher) {
 
 export async function request<T>(
   endpoint: string,
-  options: RequestOptions = {}
+  options: RequestOptions = {},
 ): Promise<T> {
   const {
     requiresAuth = true,

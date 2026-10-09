@@ -41,7 +41,7 @@ function getFriendlyLoginError(err: ApiError): string {
         return "Mật khẩu phải có từ 8 đến 128 ký tự.";
       }
       const identityErr = err.errors.find(
-        (e) => e.field === "usernameOrEmail" || e.field === "username"
+        (e) => e.field === "usernameOrEmail" || e.field === "username",
       );
       if (identityErr) {
         return "Tên đăng nhập hoặc email phải có từ 3 đến 255 ký tự.";
@@ -88,7 +88,7 @@ export function LoginScreen() {
     }
     if (trimmedInput.length > 255) {
       setErrorMessage(
-        "Tên đăng nhập hoặc email không được vượt quá 255 ký tự."
+        "Tên đăng nhập hoặc email không được vượt quá 255 ký tự.",
       );
       return;
     }
@@ -134,75 +134,81 @@ export function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
         >
-          {/* Header & Branding */}
-          <View style={styles.header}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoText}>HRM</Text>
-            </View>
-            <Text style={styles.title}>Đăng nhập</Text>
-            <Text style={styles.subtitle}>
-              Hệ thống Quản trị Nhân sự nội bộ
-            </Text>
-          </View>
-
-          {/* Form Card */}
-          <Card style={styles.card}>
-            {errorMessage ? (
-              <View
-                style={styles.errorBanner}
-                accessibilityRole="alert"
-                accessibilityLiveRegion="assertive"
-              >
-                <Text style={styles.errorBannerText}>{errorMessage}</Text>
+          <View style={styles.innerContainer}>
+            {/* Header & Branding */}
+            <View style={styles.header}>
+              <View style={styles.logoBadge}>
+                <Text style={styles.logoText}>HRM</Text>
               </View>
-            ) : null}
+              <Text style={styles.title}>Đăng nhập</Text>
+              <Text style={styles.subtitle}>
+                Hệ thống Quản trị Nhân sự nội bộ
+              </Text>
+            </View>
 
-            <Input
-              label="Tên đăng nhập hoặc Email"
-              placeholder="Ví dụ: an.nguyen hoặc an.nguyen@company.vn"
-              value={usernameOrEmail}
-              onChangeText={(text) => {
-                setUsernameOrEmail(text);
-                if (errorMessage) setErrorMessage(null);
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              returnKeyType="next"
-            />
+            {/* Form Card */}
+            <Card style={styles.card}>
+              {errorMessage ? (
+                <View
+                  style={styles.errorBanner}
+                  accessibilityRole="alert"
+                  accessibilityLiveRegion="assertive"
+                >
+                  <Text style={styles.errorBannerText}>{errorMessage}</Text>
+                </View>
+              ) : null}
 
-            <Input
-              label="Mật khẩu"
-              placeholder="Nhập mật khẩu"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errorMessage) setErrorMessage(null);
-              }}
-              isPassword
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
+              <Input
+                label="Tên đăng nhập hoặc Email"
+                placeholder="Ví dụ: an.nguyen hoặc an.nguyen@company.vn"
+                value={usernameOrEmail}
+                onChangeText={(text) => {
+                  setUsernameOrEmail(text);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                returnKeyType="next"
+              />
 
-            <Button
-              title="Đăng nhập"
-              onPress={handleLogin}
-              loading={isSubmitting}
-              style={styles.loginButton}
-            />
-          </Card>
+              <Input
+                label="Mật khẩu"
+                placeholder="Nhập mật khẩu"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                isPassword
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
 
-          {/* Footer note */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Dành riêng cho nhân viên công ty
-            </Text>
+              <Button
+                title="Đăng nhập"
+                onPress={handleLogin}
+                loading={isSubmitting}
+                style={styles.loginButton}
+              />
+            </Card>
+
+            {/* Footer note */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Dành riêng cho nhân viên công ty
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -220,25 +226,28 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing["2xl"],
+    paddingVertical: spacing.lg,
+  },
+  innerContainer: {
+    flex: 1,
+    justifyContent: "center",
   },
   header: {
     alignItems: "center",
-    marginBottom: spacing["2xl"],
+    marginBottom: spacing.xl,
   },
   logoBadge: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: radius.lg,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   logoText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: typography.weights.bold,
     color: "#FFFFFF",
     letterSpacing: 1,
@@ -248,7 +257,7 @@ const styles = StyleSheet.create({
     lineHeight: typography["2xl"].lineHeight,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xxs,
   },
   subtitle: {
     fontSize: typography.sm.fontSize,
@@ -277,7 +286,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   footer: {
-    marginTop: spacing["2xl"],
+    marginTop: spacing.lg,
     alignItems: "center",
   },
   footerText: {
