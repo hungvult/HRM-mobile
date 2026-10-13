@@ -17,9 +17,9 @@ export default function AppLayout() {
       }}
     >
       <Stack.Screen
-        name="index"
+        name="(tabs)"
         options={{
-          title: "Cá nhân",
+          headerShown: false,
         }}
       />
       <Stack.Screen
