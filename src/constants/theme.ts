@@ -8,6 +8,7 @@ export const colors = {
   primaryHover: "#1E40AF",
   primarySubtle: "#EFF6FF",
   primarySubtleBorder: "transparent",
+  primaryPill: "rgba(29, 78, 216, 0.12)",
 
   // Semantic
   success: "#16A34A",
@@ -16,6 +17,10 @@ export const colors = {
   warningSubtle: "#FFFBEB",
   danger: "#DC2626",
   dangerSubtle: "#FEF2F2",
+
+  // Badge
+  badgeBg: "#DC2626",
+  badgeText: "#FFFFFF",
 
   // Neutrals & Surfaces (Light mode)
   bgApp: "#F9FAFB",

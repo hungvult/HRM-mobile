@@ -7,6 +7,7 @@ export class ApiError extends Error {
   public code: string;
   public timestamp?: string;
   public errors?: Array<{ field: string; message: string }>;
+  public traceId?: string;
 
   constructor(data: ApiErrorResponse) {
     super(data.message || "Đã có lỗi xảy ra.");
@@ -15,6 +16,7 @@ export class ApiError extends Error {
     this.code = data.code;
     this.timestamp = data.timestamp;
     this.errors = data.errors;
+    this.traceId = data.traceId;
   }
 }
 
@@ -58,8 +60,10 @@ export async function request<T>(
   // Ensure leading slash
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
+  const method = options.method || "GET";
 
-  console.log(`[API Request] ${options.method || "GET"} ${url}`);
+  console.log(`[API Request] ${method} ${url}`);
+  const startTime = Date.now();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -73,13 +77,16 @@ export async function request<T>(
       signal: signal || controller.signal,
     });
   } catch (error: any) {
-    console.error(`[API Error] ${url}:`, error?.message || error);
+    const duration = Date.now() - startTime;
     const isTimeout =
       error?.name === "AbortError" ||
       String(error?.message).toLowerCase().includes("canceled") ||
       String(error?.message).toLowerCase().includes("aborted");
 
     if (isTimeout) {
+      console.warn(
+        `[API Network Error] ${method} ${url} (${duration}ms) | Quá thời gian kết nối (Timeout)`,
+      );
       throw new ApiError({
         timestamp: new Date().toISOString(),
         status: 408,
@@ -88,6 +95,10 @@ export async function request<T>(
         path: cleanEndpoint,
       });
     }
+    console.error(
+      `[API Network Error] ${method} ${url} (${duration}ms):`,
+      error?.message || error,
+    );
     throw new ApiError({
       timestamp: new Date().toISOString(),
       status: 0,
@@ -100,12 +111,17 @@ export async function request<T>(
     clearTimeout(timer);
   }
 
+  const duration = Date.now() - startTime;
+
   if (
     response.status === 401 &&
     requiresAuth &&
     !options._isRetry &&
     tokenRefresher
   ) {
+    console.warn(
+      `[API Auth] 401 ${method} ${url} (${duration}ms) -> Thử làm mới token...`,
+    );
     const newToken = await tokenRefresher();
     return await request<T>(endpoint, {
       ...options,
@@ -118,6 +134,7 @@ export async function request<T>(
   }
 
   if (response.status === 204) {
+    console.log(`[API Response] 204 ${method} ${url} (${duration}ms)`);
     return {} as T;
   }
 
@@ -127,8 +144,17 @@ export async function request<T>(
   if (!response.ok) {
     if (isJson) {
       const errorData: ApiErrorResponse = await response.json();
+      const traceSuffix = errorData.traceId
+        ? ` | TraceID: ${errorData.traceId}`
+        : "";
+      console.error(
+        `[API Error] ${response.status} ${method} ${url} (${duration}ms) | ${errorData.code || "UNKNOWN"}: ${errorData.message || "No message"}${traceSuffix}`,
+      );
       throw new ApiError(errorData);
     }
+    console.error(
+      `[API Error] ${response.status} ${method} ${url} (${duration}ms) | HTTP_${response.status}`,
+    );
     throw new ApiError({
       timestamp: new Date().toISOString(),
       status: response.status,
@@ -137,6 +163,10 @@ export async function request<T>(
       path: cleanEndpoint,
     });
   }
+
+  console.log(
+    `[API Response] ${response.status} ${method} ${url} (${duration}ms)`,
+  );
 
   if (isJson) {
     return (await response.json()) as T;
