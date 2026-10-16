@@ -29,6 +29,20 @@ export default function AppLayout() {
           headerBackTitle: "Quay lại",
         }}
       />
+      <Stack.Screen
+        name="create-leave"
+        options={{
+          title: "Tạo đơn nghỉ phép",
+          headerBackTitle: "Quay lại",
+        }}
+      />
+      <Stack.Screen
+        name="leave-detail"
+        options={{
+          title: "Chi tiết đơn nghỉ phép",
+          headerBackTitle: "Quay lại",
+        }}
+      />
     </Stack>
   );
 }

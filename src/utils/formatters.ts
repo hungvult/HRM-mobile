@@ -297,6 +297,110 @@ export function formatFullWorkDate(dateStr: string): string {
   return `${dayName}, ${day}/${month}/${year}`;
 }
 
+export function getLeaveStatusConfig(status?: string | null): StatusConfig {
+  switch (status) {
+    case "PENDING":
+      return {
+        label: "Chờ duyệt",
+        bg: colors.warningSubtle,
+        text: colors.warning,
+      };
+    case "APPROVED":
+      return {
+        label: "Đã duyệt",
+        bg: colors.successSubtle,
+        text: colors.success,
+      };
+    case "REJECTED":
+      return {
+        label: "Từ chối",
+        bg: colors.dangerSubtle,
+        text: colors.danger,
+      };
+    case "CANCELLED":
+      return {
+        label: "Đã hủy",
+        bg: colors.border,
+        text: colors.textSecondary,
+      };
+    default:
+      return {
+        label: status || "Chưa xác định",
+        bg: colors.border,
+        text: colors.textSecondary,
+      };
+  }
+}
+
+/**
+ * Tính số ngày làm việc thực tế giữa 2 mốc ngày (loại trừ Thứ Bảy và Chủ Nhật)
+ */
+export function calculateWorkingDays(
+  startDateStr: string,
+  endDateStr: string,
+): number {
+  if (!startDateStr || !endDateStr) return 0;
+  const start = parseWorkDate(startDateStr);
+  const end = parseWorkDate(endDateStr);
+
+  if (
+    isNaN(start.getTime()) ||
+    isNaN(end.getTime()) ||
+    end.getTime() < start.getTime()
+  ) {
+    return 0;
+  }
+
+  let count = 0;
+  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+  while (cur.getTime() <= last.getTime()) {
+    const dayOfWeek = cur.getDay();
+    // 0 is Sunday, 6 is Saturday
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  return count;
+}
+
+/**
+ * Định dạng khoảng ngày "DD/MM/YYYY — DD/MM/YYYY" hoặc "DD/MM/YYYY" nếu trùng ngày
+ */
+export function formatDateRange(
+  startDateStr?: string,
+  endDateStr?: string,
+): string {
+  if (!startDateStr) return "";
+  const formattedStart = formatDate(startDateStr);
+  if (!endDateStr || startDateStr === endDateStr) {
+    return formattedStart;
+  }
+  return `${formattedStart} — ${formatDate(endDateStr)}`;
+}
+
+/**
+ * Định dạng "HH:mm, DD/MM/YYYY"
+ */
+export function formatDateTime(isoStr?: string | null): string {
+  if (!isoStr) return "--:--";
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "--:--";
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${hours}:${minutes}, ${day}/${month}/${year}`;
+  } catch {
+    return "--:--";
+  }
+}
+
 /**
  * Check if text contains accented Vietnamese characters
  */
@@ -328,7 +432,7 @@ export function getFriendlyErrorMessage(
     errors?: Array<{ field: string; message: string }>;
   };
 
-  // 1. Business domain error codes
+  // 1. Business domain error codes (Attendance)
   if (apiErr.code === "ATTENDANCE_ALREADY_CHECKED_IN") {
     return "Bạn đã check-in trước đó.";
   }
@@ -353,6 +457,41 @@ export function getFriendlyErrorMessage(
   if (apiErr.code === "ATTENDANCE_EMPLOYEE_INACTIVE") {
     return "Nhân viên không ở trạng thái được phép chấm công.";
   }
+
+  // 2. Business domain error codes (Leave - UC013 & UC014)
+  if (apiErr.code === "LEAVE_BALANCE_INSUFFICIENT") {
+    return "Số dư phép còn lại không đủ để gửi đơn này.";
+  }
+  if (apiErr.code === "LEAVE_REQUEST_PAST_DATE") {
+    return "Không thể gửi đơn nghỉ phép cho ngày trong quá khứ.";
+  }
+  if (apiErr.code === "LEAVE_REQUEST_DATE_RANGE_INVALID") {
+    return "Ngày kết thúc nghỉ không được trước ngày bắt đầu nghỉ.";
+  }
+  if (apiErr.code === "LEAVE_REQUEST_NO_WORKING_DAY") {
+    return "Khoảng thời gian đăng ký không có ngày làm việc.";
+  }
+  if (apiErr.code === "LEAVE_TYPE_NOT_AVAILABLE") {
+    return "Loại phép không tồn tại hoặc đã ngừng hiệu lực.";
+  }
+  if (apiErr.code === "LEAVE_REQUEST_OVERLAP") {
+    return "Khoảng ngày nghỉ bị chồng lấn với đơn đang chờ duyệt hoặc đã được duyệt.";
+  }
+  if (apiErr.code === "LEAVE_REQUEST_REVIEWER_NOT_FOUND") {
+    return "Không tìm thấy quản lý trực tiếp hoặc nhân sự đang hoạt động để xử lý đơn nghỉ phép.";
+  }
+  if (apiErr.code === "LEAVE_REQUEST_NOT_CANCELLABLE") {
+    return "Đơn nghỉ phép đã được xử lý trước đó, chỉ có thể hủy đơn đang chờ duyệt.";
+  }
+  if (apiErr.code === "LEAVE_REQUEST_NOT_OWNER") {
+    return "Bạn chỉ được hủy đơn nghỉ phép của chính mình.";
+  }
+  if (apiErr.code === "LEAVE_REQUEST_NOT_FOUND") {
+    return "Không tìm thấy đơn nghỉ phép.";
+  }
+  if (apiErr.code === "EMPLOYEE_PROFILE_REQUIRED") {
+    return "Tài khoản chưa được liên kết với hồ sơ nhân viên.";
+  }
   if (
     apiErr.code === "AUTH_FORBIDDEN" ||
     apiErr.code === "FORBIDDEN" ||
@@ -362,7 +501,7 @@ export function getFriendlyErrorMessage(
     if (apiErr.message && isVietnameseText(apiErr.message)) {
       return apiErr.message;
     }
-    return "Bạn không có quyền thực hiện chấm công. Vui lòng liên hệ quản lý hoặc nhân sự.";
+    return "Bạn không có quyền thực hiện thao tác này. Vui lòng liên hệ quản lý hoặc nhân sự.";
   }
   if (
     apiErr.code === "AUTH_UNAUTHORIZED" ||
