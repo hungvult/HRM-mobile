@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import {
   ConfirmCheckoutModal,
   HeroPunchCard,
+  MainTopBar,
   PunchSummaryModal,
   VerificationBanner,
 } from "../../components";
@@ -61,11 +62,6 @@ export function HomeScreen() {
     useState<AttendanceActionResponse | null>(null);
 
   const fullName = employee?.fullName || user?.username || "Bạn";
-  const departmentName = employee?.department?.name || "";
-  const positionName = employee?.position?.name || "";
-  const subtitle =
-    [positionName, departmentName].filter(Boolean).join(" • ") ||
-    "Nhân viên công ty";
   const avatarLetter = getAvatarLetter(employee?.fullName, user?.username);
 
   const handlePressCheckIn = async () => {
@@ -220,6 +216,21 @@ export function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <MainTopBar
+        leftContent={
+          <View style={styles.headerLeft}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarLetter}>{avatarLetter}</Text>
+            </View>
+            <View style={styles.greetingContainer}>
+              <Text style={styles.greetingTitle} numberOfLines={2}>
+                Xin chào! {fullName}
+              </Text>
+            </View>
+          </View>
+        }
+        containerStyle={styles.topBarContainer}
+      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -231,21 +242,6 @@ export function HomeScreen() {
           />
         }
       >
-        {/* Header Section: Avatar, Greeting, Employee Role */}
-        <View style={styles.header}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarLetter}>{avatarLetter}</Text>
-          </View>
-          <View style={styles.greetingContainer}>
-            <Text style={styles.greetingTitle} numberOfLines={1}>
-              Xin chào, {fullName} 👋
-            </Text>
-            <Text style={styles.greetingSubtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          </View>
-        </View>
-
         {/* Verification Status & Permission Banner */}
         <VerificationBanner
           hasLocationPermission={hasLocationPermission}
@@ -358,6 +354,18 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing["3xl"],
   },
+  topBarContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.bgApp,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -365,8 +373,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   avatarCircle: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     borderRadius: radius.full,
     backgroundColor: colors.primarySubtle,
     borderWidth: 1,
@@ -375,7 +383,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarLetter: {
-    fontSize: typography.base.fontSize,
+    fontSize: typography.sm.fontSize,
     fontWeight: typography.weights.bold,
     color: colors.primary,
   },
@@ -384,16 +392,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   greetingTitle: {
-    fontSize: typography.lg.fontSize,
-    lineHeight: typography.lg.lineHeight,
+    fontSize: typography.base.fontSize,
+    lineHeight: typography.base.lineHeight,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
-  },
-  greetingSubtitle: {
-    fontSize: typography.xs.fontSize,
-    lineHeight: typography.xs.lineHeight,
-    color: colors.textSecondary,
-    marginTop: 2,
   },
   errorBox: {
     backgroundColor: colors.dangerSubtle,

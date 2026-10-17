@@ -16,6 +16,7 @@ import {
   LeaveBalanceCard,
   LeaveRequestCard,
   LeaveStatusFilter,
+  MainTopBar,
 } from "../../components";
 import { colors, radius, spacing, typography } from "../../constants";
 import { useLeaves } from "../../hooks";
@@ -66,14 +67,6 @@ export function LeavesScreen() {
 
   const renderHeader = () => (
     <View style={styles.listHeaderContainer}>
-      {/* Header Titles */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Đơn từ & Nghỉ phép</Text>
-        <Text style={styles.headerSubtitle}>
-          Theo dõi số dư quỹ phép năm và quản lý đơn xin nghỉ
-        </Text>
-      </View>
-
       {/* Leave Balance Card */}
       <LeaveBalanceCard
         year={selectedYear}
@@ -180,6 +173,10 @@ export function LeavesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <MainTopBar
+        title="Đơn từ & Nghỉ phép"
+        containerStyle={styles.topBarContainer}
+      />
       {/* Main FlatList */}
       <FlatList
         data={requests}
@@ -211,6 +208,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.bgApp,
+  },
+  topBarContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.bgApp,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   listContent: {
     padding: spacing.md,

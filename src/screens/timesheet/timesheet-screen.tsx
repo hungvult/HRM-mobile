@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   CalendarGrid,
   DailyAttendanceItem,
+  MainTopBar,
   MonthSelector,
   TimesheetSummaryCard,
 } from "../../components";
@@ -43,6 +44,10 @@ export function TimesheetScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <MainTopBar
+        title="Bảng công cá nhân"
+        containerStyle={styles.topBarContainer}
+      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -54,14 +59,6 @@ export function TimesheetScreen() {
           />
         }
       >
-        {/* Header Section */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Bảng công cá nhân</Text>
-          <Text style={styles.headerSubtitle}>
-            Theo dõi chi tiết ngày công và giờ làm việc theo tháng
-          </Text>
-        </View>
-
         {/* Month Selector Component */}
         <MonthSelector
           selectedMonth={selectedMonth}
@@ -178,6 +175,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.bgApp,
+  },
+  topBarContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.bgApp,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   scrollContent: {
     padding: spacing.md,

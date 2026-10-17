@@ -8,6 +8,7 @@ export default function TabLayout() {
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
+        headerShown: false,
         animation: "fade",
         headerStyle: {
           backgroundColor: colors.bgSurface,
