@@ -4,4 +4,5 @@ export * from "./input";
 export * from "./card";
 export * from "./attendance";
 export * from "./timesheet";
+export * from "./leaves";
 export * from "./navigation";
