@@ -493,6 +493,13 @@ export function getFriendlyErrorMessage(
     return "Tài khoản chưa được liên kết với hồ sơ nhân viên.";
   }
   if (
+    apiErr.code === "NOTIFICATION_NOT_FOUND" ||
+    (apiErr.status === 404 &&
+      String(apiErr.message).toLowerCase().includes("thông báo"))
+  ) {
+    return "Không tìm thấy thông báo hoặc bạn không có quyền truy cập.";
+  }
+  if (
     apiErr.code === "AUTH_FORBIDDEN" ||
     apiErr.code === "FORBIDDEN" ||
     apiErr.code === "AUTH_FORBIDDEN_SCOPE" ||
@@ -526,4 +533,65 @@ export function getFriendlyErrorMessage(
   }
 
   return fallbackMessage;
+}
+
+/**
+ * Cấu hình hiển thị theo loại thông báo (UC020)
+ */
+export function getNotificationTypeConfig(type?: string): {
+  label: string;
+  icon: any;
+  iconColor: string;
+  iconBg: string;
+  accentColor: string;
+} {
+  switch (type) {
+    case "LEAVE_APPROVED":
+      return {
+        label: "Đã duyệt nghỉ phép",
+        icon: "checkmark-circle",
+        iconColor: colors.success,
+        iconBg: colors.successSubtle,
+        accentColor: colors.success,
+      };
+    case "LEAVE_REJECTED":
+      return {
+        label: "Từ chối nghỉ phép",
+        icon: "close-circle",
+        iconColor: colors.danger,
+        iconBg: colors.dangerSubtle,
+        accentColor: colors.danger,
+      };
+    default:
+      return {
+        label: "Thông báo hệ thống",
+        icon: "notifications",
+        iconColor: colors.primary,
+        iconBg: colors.primarySubtle,
+        accentColor: colors.primary,
+      };
+  }
+}
+
+/**
+ * Định dạng thời gian thông báo dạng tương đối (ví dụ: "Vừa xong", "15 phút trước", "2 giờ trước")
+ */
+export function formatRelativeTime(isoStr?: string | null): string {
+  if (!isoStr) return "";
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "";
+    const now = new Date();
+    const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
+    if (diffSec < 60) return "Vừa xong";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return formatDateTime(isoStr);
+  } catch {
+    return "";
+  }
 }
