@@ -43,6 +43,13 @@ export default function AppLayout() {
           headerBackTitle: "Quay lại",
         }}
       />
+      <Stack.Screen
+        name="notifications"
+        options={{
+          title: "Thông báo",
+          headerBackTitle: "Quay lại",
+        }}
+      />
     </Stack>
   );
 }

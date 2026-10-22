@@ -12,7 +12,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Button, Card, InfoField } from "../../components";
+import { Button, Card, InfoField, MainTopBar } from "../../components";
 import { colors, radius, spacing, typography } from "../../constants";
 import { useAuth, useUser } from "../../hooks";
 import {
@@ -176,7 +176,11 @@ export function ProfileScreen() {
   const avatarLetter = getAvatarLetter(employee?.fullName, user?.username);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <MainTopBar
+        title="Hồ sơ cá nhân"
+        containerStyle={styles.topBarContainer}
+      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -366,6 +370,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.bgApp,
+  },
+  topBarContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.bgApp,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   centerContainer: {
     flex: 1,
