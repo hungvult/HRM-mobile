@@ -16,7 +16,8 @@ import {
   touchTargets,
 } from "../constants";
 
-export type ButtonVariant = "primary" | "outline" | "danger" | "text";
+export type ButtonVariant =
+  "primary" | "outline" | "danger" | "success" | "warning" | "text";
 
 export interface ButtonProps {
   title: string;
@@ -60,6 +61,16 @@ export function Button({
           ...base,
           backgroundColor: pressed ? colors.primaryHover : colors.primary,
         };
+      case "success":
+        return {
+          ...base,
+          backgroundColor: pressed ? "#15803D" : colors.success,
+        };
+      case "warning":
+        return {
+          ...base,
+          backgroundColor: pressed ? "#B45309" : colors.warning,
+        };
       case "outline":
         return {
           ...base,
@@ -86,6 +97,8 @@ export function Button({
     switch (variant) {
       case "primary":
       case "danger":
+      case "success":
+      case "warning":
         return "#FFFFFF";
       case "outline":
       case "text":

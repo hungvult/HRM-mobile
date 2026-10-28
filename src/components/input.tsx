@@ -24,6 +24,8 @@ export interface InputProps extends TextInputProps {
   isPassword?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
   inputRef?: Ref<TextInput>;
+  rightIcon?: React.ReactNode;
+  onRightIconPress?: () => void;
 }
 
 export function Input({
@@ -34,6 +36,8 @@ export function Input({
   containerStyle,
   style,
   inputRef,
+  rightIcon,
+  onRightIconPress,
   onFocus,
   onBlur,
   ...rest
@@ -88,6 +92,16 @@ export function Input({
             <Text style={styles.eyeText}>{isSecure ? "Hiện" : "Ẩn"}</Text>
           </Pressable>
         )}
+        {rightIcon && (
+          <Pressable
+            onPress={onRightIconPress}
+            disabled={!onRightIconPress}
+            style={styles.rightIconButton}
+            accessibilityRole={onRightIconPress ? "button" : undefined}
+          >
+            {rightIcon}
+          </Pressable>
+        )}
       </View>
       {error ? (
         <Text style={styles.errorText}>{error}</Text>
@@ -137,6 +151,13 @@ const styles = StyleSheet.create({
     fontSize: typography.sm.fontSize,
     color: colors.primary,
     fontWeight: typography.weights.medium,
+  },
+  rightIconButton: {
+    minHeight: touchTargets.min,
+    minWidth: touchTargets.min,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.xs,
   },
   errorText: {
     fontSize: typography.xs.fontSize,

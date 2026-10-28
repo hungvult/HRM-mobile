@@ -1,0 +1,7 @@
+node_modules
+.agents
+.claude
+android
+build
+.expo
+package-lock.json

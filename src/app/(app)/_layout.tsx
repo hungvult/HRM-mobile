@@ -17,15 +17,36 @@ export default function AppLayout() {
       }}
     >
       <Stack.Screen
-        name="index"
+        name="(tabs)"
         options={{
-          title: "Cá nhân",
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="edit-profile"
         options={{
           title: "Chỉnh sửa thông tin",
+          headerBackTitle: "Quay lại",
+        }}
+      />
+      <Stack.Screen
+        name="create-leave"
+        options={{
+          title: "Tạo đơn nghỉ phép",
+          headerBackTitle: "Quay lại",
+        }}
+      />
+      <Stack.Screen
+        name="leave-detail"
+        options={{
+          title: "Chi tiết đơn nghỉ phép",
+          headerBackTitle: "Quay lại",
+        }}
+      />
+      <Stack.Screen
+        name="notifications"
+        options={{
+          title: "Thông báo",
           headerBackTitle: "Quay lại",
         }}
       />
