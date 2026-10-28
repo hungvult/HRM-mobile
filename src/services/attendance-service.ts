@@ -34,6 +34,8 @@ export const attendanceService = {
       body: JSON.stringify({
         latitude: location.latitude,
         longitude: location.longitude,
+        accuracyMeters: location.accuracyMeters,
+        locationCapturedAt: location.locationCapturedAt,
       }),
       requiresAuth: true,
     });
@@ -47,6 +49,8 @@ export const attendanceService = {
       body: JSON.stringify({
         latitude: location.latitude,
         longitude: location.longitude,
+        accuracyMeters: location.accuracyMeters,
+        locationCapturedAt: location.locationCapturedAt,
       }),
       requiresAuth: true,
     });
