@@ -8,6 +8,7 @@ import React, {
 import { Employee, UserProfile } from "../types";
 import { userService } from "../services";
 import { useAuth } from "../hooks/use-auth";
+import { getFriendlyErrorMessage } from "../utils";
 
 export interface UserContextType {
   user: UserProfile | null;
@@ -45,7 +46,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const profile = await userService.getMe();
       setUser(profile);
     } catch (err: any) {
-      setError(err?.message || "Không thể tải thông tin người dùng.");
+      setError(
+        getFriendlyErrorMessage(err, "Không thể tải thông tin người dùng."),
+      );
     } finally {
       if (isRefresh) {
         setIsRefreshing(false);

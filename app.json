@@ -27,7 +27,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Cho phép ứng dụng truy cập vị trí để xác thực bạn đang ở trong khuôn viên công ty."
+        }
+      ]
     ],
     "extra": {
       "router": {},

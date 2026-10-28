@@ -1,6 +1,6 @@
 import React from "react";
-import { ProfileScreen } from "../../screens";
+import { Redirect } from "expo-router";
 
-export default function ProfileRoute() {
-  return <ProfileScreen />;
+export default function AppIndex() {
+  return <Redirect href="/(app)/(tabs)" />;
 }
