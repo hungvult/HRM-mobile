@@ -3,7 +3,12 @@ import { Linking, Platform } from "react-native";
 import * as Location from "expo-location";
 import * as Network from "expo-network";
 import { attendanceService } from "../services";
-import { AttendanceActionResponse, TodayAttendance } from "../types";
+import {
+  AttendanceActionResponse,
+  AttendanceLocationRequest,
+  TodayAttendance,
+} from "../types";
+import { toAttendanceLocation } from "../utils/attendance-location";
 import { ApiError } from "../services/api";
 import { getFriendlyErrorMessage } from "../utils";
 
@@ -220,10 +225,7 @@ export function useAttendance(): AttendanceHookReturn {
     setErrorDetail(null);
   }, []);
 
-  const getCurrentCoords = async (): Promise<{
-    latitude: number;
-    longitude: number;
-  }> => {
+  const getCurrentCoords = async (): Promise<AttendanceLocationRequest> => {
     let granted = hasLocationPermission;
     if (!granted) {
       const permResult = await requestLocationPermission();
@@ -254,13 +256,21 @@ export function useAttendance(): AttendanceHookReturn {
     }
 
     const pos = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
+      accuracy: Location.Accuracy.High,
     });
 
-    return {
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude,
-    };
+    const location = toAttendanceLocation(pos);
+    if (!location) {
+      throw new ApiError({
+        timestamp: new Date().toISOString(),
+        status: 400,
+        code: "ATTENDANCE_INVALID_GPS",
+        message:
+          "Chưa lấy được vị trí GPS hợp lệ. Vui lòng thử lại ở nơi có tín hiệu tốt hơn.",
+        path: "/attendance/location",
+      });
+    }
+    return location;
   };
 
   const handleApiError = async (err: any) => {

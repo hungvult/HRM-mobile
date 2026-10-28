@@ -21,6 +21,8 @@ export interface TodayAttendance {
 export interface AttendanceLocationRequest {
   latitude: number;
   longitude: number;
+  accuracyMeters: number;
+  locationCapturedAt: string;
 }
 
 export interface AttendanceActionResponse {
