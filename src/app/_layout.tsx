@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Slot, useRouter, useSegments } from "expo-router";
+import React from "react";
+import { Stack } from "expo-router";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "../contexts/auth-context";
@@ -7,23 +7,9 @@ import { UserProvider } from "../contexts/user-context";
 import { useAuth } from "../hooks";
 import { colors } from "../constants";
 
+// Khi phiên kết thúc, Protected bỏ toàn bộ màn nghiệp vụ khỏi lịch sử để nút Back không mở lại được màn cũ.
 function RootNavigation() {
   const { isAuthenticated, isLoading } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inAuthGroup = segments[0] === "(auth)";
-    const inAppGroup = segments[0] === "(app)";
-
-    if (!isAuthenticated && !inAuthGroup) {
-      router.replace("/(auth)/login");
-    } else if (isAuthenticated && !inAppGroup) {
-      router.replace("/(app)");
-    }
-  }, [isAuthenticated, isLoading, segments, router]);
 
   if (isLoading) {
     return (
@@ -33,7 +19,16 @@ function RootNavigation() {
     );
   }
 
-  return <Slot />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={isAuthenticated}>
+        <Stack.Screen name="(app)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!isAuthenticated}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
+  );
 }
 
 export default function RootLayout() {

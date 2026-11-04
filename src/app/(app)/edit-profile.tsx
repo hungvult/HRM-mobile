@@ -1,6 +1,7 @@
 import React from "react";
-import { EditProfileScreen } from "../../screens";
+import { Redirect } from "expo-router";
 
 export default function EditProfileRoute() {
-  return <EditProfileScreen />;
+  // Giữ liên kết cũ an toàn: Mobile chỉ xem hồ sơ nên không mở biểu mẫu cập nhật khi truy cập trực tiếp.
+  return <Redirect href="/(app)/(tabs)/profile" />;
 }

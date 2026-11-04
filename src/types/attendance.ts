@@ -25,6 +25,15 @@ export interface AttendanceLocationRequest {
   locationCapturedAt: string;
 }
 
+// Kết quả chỉ có giá trị tại verifiedAt; app không dùng nó để cho phép hoặc chặn lần bấm chấm công.
+export interface AttendancePrecheckResponse {
+  eligible: boolean;
+  verificationMode: "OR" | "AND" | "GPS_ONLY";
+  wifiVerified: boolean;
+  gpsVerified: boolean;
+  verifiedAt: string;
+}
+
 export interface AttendanceActionResponse {
   attendanceRecordId: number;
   workDate: string;

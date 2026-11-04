@@ -58,6 +58,18 @@ export const notificationService = {
   },
 
   /**
+   * Đánh dấu chưa đọc bằng ID notifications, không phải ID đơn nghỉ phép liên quan.
+   * Backend xác minh người nhận theo phiên, trả bản ghi mới có read=false và readAt=null.
+   * Giữ request chung để chặn dữ liệu của phiên đã logout; không tự retry ở tầng nghiệp vụ.
+   */
+  async markAsUnread(id: number): Promise<NotificationItem> {
+    return await request<NotificationItem>(`/notifications/${id}/unread`, {
+      method: "PATCH",
+      requiresAuth: true,
+    });
+  },
+
+  /**
    * API 44: Đánh dấu toàn bộ thông báo chưa đọc là đã đọc
    * PATCH /api/v1/notifications/read-all
    */

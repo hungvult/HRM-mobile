@@ -24,10 +24,23 @@ interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
   timeoutMs?: number;
   _isRetry?: boolean;
+  responseType?: "blob";
 }
 
 type TokenRefresher = () => Promise<string>;
 let tokenRefresher: TokenRefresher | null = null;
+
+// API của phiên cũ phải dừng sau logout, kể cả khi đang chờ SecureStore, refresh hoặc body phản hồi.
+export function assertCurrentAuthSession(version: number) {
+  if (!authStorage.isCurrentSession(version)) {
+    throw new ApiError({
+      timestamp: new Date().toISOString(),
+      status: 401,
+      code: "AUTH_SESSION_ENDED",
+      message: "Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.",
+    });
+  }
+}
 
 export function registerTokenRefresher(refresher: TokenRefresher) {
   tokenRefresher = refresher;
@@ -37,16 +50,21 @@ export async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
+  const sessionVersion = authStorage.getSessionVersion();
   const {
     requiresAuth = true,
     headers = {},
     timeoutMs = 10000,
     signal,
+    responseType,
     ...customConfig
   } = options;
 
   const requestHeaders: Record<string, string> = {
-    "Content-Type": "application/json; charset=utf-8",
+    // FormData tự sinh boundary; đặt JSON Content-Type sẽ làm backend không đọc được các phần ảnh/đơn.
+    ...(options.body instanceof FormData
+      ? {}
+      : { "Content-Type": "application/json; charset=utf-8" }),
     ...(headers as Record<string, string>),
   };
 
@@ -56,6 +74,9 @@ export async function request<T>(
       requestHeaders.Authorization = `Bearer ${token}`;
     }
   }
+
+  // Kiểm tra sau khi đọc token vì logout có thể xảy ra trong lúc SecureStore đang đọc.
+  if (requiresAuth) assertCurrentAuthSession(sessionVersion);
 
   // Ensure leading slash
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
@@ -113,6 +134,9 @@ export async function request<T>(
 
   const duration = Date.now() - startTime;
 
+  // Không refresh hoặc trả dữ liệu cho màn hình đã thuộc một phiên khác.
+  if (requiresAuth) assertCurrentAuthSession(sessionVersion);
+
   if (
     response.status === 401 &&
     requiresAuth &&
@@ -123,6 +147,7 @@ export async function request<T>(
       `[API Auth] 401 ${method} ${url} (${duration}ms) -> Thử làm mới token...`,
     );
     const newToken = await tokenRefresher();
+    if (requiresAuth) assertCurrentAuthSession(sessionVersion);
     return await request<T>(endpoint, {
       ...options,
       _isRetry: true,
@@ -168,9 +193,20 @@ export async function request<T>(
     `[API Response] ${response.status} ${method} ${url} (${duration}ms)`,
   );
 
-  if (isJson) {
-    return (await response.json()) as T;
+  // Ảnh riêng tư dùng cùng bearer/refresh và kiểm tra phiên cả sau khi đọc hết nội dung nhị phân.
+  if (responseType === "blob") {
+    const payload = await response.blob();
+    if (requiresAuth) assertCurrentAuthSession(sessionVersion);
+    return payload as T;
   }
 
-  return (await response.text()) as unknown as T;
+  if (isJson) {
+    const payload = await response.json();
+    if (requiresAuth) assertCurrentAuthSession(sessionVersion);
+    return payload as T;
+  }
+
+  const payload = await response.text();
+  if (requiresAuth) assertCurrentAuthSession(sessionVersion);
+  return payload as unknown as T;
 }

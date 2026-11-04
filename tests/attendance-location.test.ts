@@ -48,4 +48,14 @@ describe("production attendance GPS contract", () => {
       );
     }
   });
+  it("does not invent GPS evidence when the user relies on company Wi-Fi", async () => {
+    for (const action of ["checkIn", "checkOut"] as const) {
+      vi.mocked(request).mockClear();
+      await attendanceService[action]();
+      expect(request).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ body: "{}" }),
+      );
+    }
+  });
 });
