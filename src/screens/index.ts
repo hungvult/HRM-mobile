@@ -5,3 +5,4 @@ export * from "./attendance/home-screen";
 export * from "./timesheet";
 export * from "./leaves";
 export * from "./notifications";
+export * from "./payroll";
