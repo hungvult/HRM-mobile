@@ -9,6 +9,7 @@ import { Employee, UserProfile } from "../types";
 import { userService } from "../services";
 import { useAuth } from "../hooks/use-auth";
 import { getFriendlyErrorMessage } from "../utils";
+import { authStorage } from "../services/auth-storage";
 
 export interface UserContextType {
   user: UserProfile | null;
@@ -30,10 +31,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = useRef<boolean>(false);
+  const fetchVersionRef = useRef(0);
 
+  // Chỉ ghi hồ sơ của lượt tải và phiên hiện tại; phản hồi sau logout không được đưa dữ liệu cũ trở lại.
   const fetchProfile = useCallback(async (isRefresh = false) => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
+    const fetchVersion = ++fetchVersionRef.current;
+    const sessionVersion = authStorage.getSessionVersion();
 
     if (isRefresh) {
       setIsRefreshing(true);
@@ -44,18 +49,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const profile = await userService.getMe();
-      setUser(profile);
+      if (
+        fetchVersion === fetchVersionRef.current &&
+        authStorage.isCurrentSession(sessionVersion)
+      )
+        setUser(profile);
     } catch (err: any) {
-      setError(
-        getFriendlyErrorMessage(err, "Không thể tải thông tin người dùng."),
-      );
-    } finally {
-      if (isRefresh) {
-        setIsRefreshing(false);
-      } else {
-        setIsLoading(false);
+      if (
+        fetchVersion === fetchVersionRef.current &&
+        authStorage.isCurrentSession(sessionVersion)
+      ) {
+        setError(
+          getFriendlyErrorMessage(err, "Không thể tải thông tin người dùng."),
+        );
       }
-      isFetchingRef.current = false;
+    } finally {
+      if (fetchVersion === fetchVersionRef.current) {
+        if (isRefresh) {
+          setIsRefreshing(false);
+        } else {
+          setIsLoading(false);
+        }
+        isFetchingRef.current = false;
+      }
     }
   }, []);
 
@@ -67,7 +83,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setUser(updatedProfile);
   }, []);
 
+  // Xóa UI và vô hiệu lượt tải đang chạy; lượt cũ không được mở khóa hoặc ghi đè lượt tải của tài khoản mới.
   const clearUser = useCallback(() => {
+    fetchVersionRef.current += 1;
     setUser(null);
     setError(null);
     setIsLoading(false);

@@ -492,6 +492,20 @@ export function getFriendlyErrorMessage(
   if (apiErr.code === "EMPLOYEE_PROFILE_REQUIRED") {
     return "Tài khoản chưa được liên kết với hồ sơ nhân viên.";
   }
+
+  // 3. Business domain error codes (Payroll - UC019 & P1T-247)
+  if (apiErr.code === "PAYSLIP_NOT_AVAILABLE") {
+    return "Phiếu lương chưa khả dụng.";
+  }
+  if (
+    apiErr.code === "PAYROLL_RUN_NOT_FOUND" ||
+    apiErr.code === "PAYROLL_PERIOD_NOT_FOUND"
+  ) {
+    return "Không tìm thấy kỳ lương.";
+  }
+  if (apiErr.code === "VALIDATION_ERROR") {
+    return "Dữ liệu yêu cầu không hợp lệ.";
+  }
   if (
     apiErr.code === "NOTIFICATION_NOT_FOUND" ||
     (apiErr.status === 404 &&
@@ -594,4 +608,36 @@ export function formatRelativeTime(isoStr?: string | null): string {
   } catch {
     return "";
   }
+}
+
+/**
+ * Định dạng tiền tệ VND chuẩn Việt Nam (số nguyên, phân cách hàng nghìn bằng dấu chấm)
+ * Ví dụ: 22575000 -> "22.575.000 ₫"
+ */
+export function formatCurrency(
+  amount?: number | string | null,
+  suffix = " ₫",
+): string {
+  if (amount === null || amount === undefined || amount === "") {
+    return `0${suffix}`;
+  }
+  const num = typeof amount === "string" ? Number(amount) : amount;
+  if (isNaN(num)) {
+    return `0${suffix}`;
+  }
+  const rounded = Math.round(num);
+  const isNegative = rounded < 0;
+  const absStr = Math.abs(rounded).toString();
+  const formatted = absStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${isNegative ? "-" : ""}${formatted}${suffix}`;
+}
+
+/**
+ * Định dạng tháng và năm của kỳ lương: "Tháng MM/YYYY"
+ * Ví dụ: month = 9, year = 2026 -> "Tháng 09/2026"
+ */
+export function formatPeriodMonthYear(month: number, year: number): string {
+  if (!month || !year) return "";
+  const paddedMonth = String(month).padStart(2, "0");
+  return `Tháng ${paddedMonth}/${year}`;
 }

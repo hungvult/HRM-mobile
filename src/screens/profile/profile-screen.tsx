@@ -52,10 +52,16 @@ export function ProfileScreen() {
     };
   }, []);
 
+  // Phiên cục bộ đã đóng kể cả lỗi mạng; báo rõ nếu server chưa xác nhận thu hồi phiên.
   const performLogout = async () => {
     setIsLoggingOut(true);
     try {
       await logout();
+    } catch {
+      Alert.alert(
+        "Đăng xuất",
+        "Đã đăng xuất trên thiết bị. Chưa thể xác nhận hủy phiên trên máy chủ do lỗi kết nối.",
+      );
     } finally {
       if (isMountedRef.current) {
         setIsLoggingOut(false);
