@@ -5,3 +5,4 @@ export * from "./user-service";
 export * from "./attendance-service";
 export * from "./leave-service";
 export * from "./notification-service";
+export * from "./payroll-service";

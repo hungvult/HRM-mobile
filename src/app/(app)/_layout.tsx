@@ -50,6 +50,13 @@ export default function AppLayout() {
           headerBackTitle: "Quay lại",
         }}
       />
+      <Stack.Screen
+        name="payslip-detail"
+        options={{
+          title: "Chi tiết phiếu lương",
+          headerBackTitle: "Quay lại",
+        }}
+      />
     </Stack>
   );
 }
