@@ -2,6 +2,16 @@
 
 Mobile application for the HRM system, built with Expo, React Native, and TypeScript.
 
+## How to install
+
+Go to release tag on the right side.
+
+Pick the lastest release
+
+Click on .apk file
+
+Using android devices to install
+
 ## Requirements
 
 - Node.js 20 or newer
@@ -96,8 +106,8 @@ assets/
 
 ## Environment Variables
 
-| Name | Description | Example |
-| --- | --- | --- |
+| Name                  | Description                                 | Example                        |
+| --------------------- | ------------------------------------------- | ------------------------------ |
 | `EXPO_PUBLIC_API_URL` | Backend API base URL used by the mobile app | `http://localhost:3000/api/v1` |
 
 ## Troubleshooting
