@@ -6,12 +6,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Pressable,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, Card } from "../../components";
 import { colors, radius, spacing, typography } from "../../constants";
 import { useAuth } from "../../hooks";
 import { ApiError } from "../../services";
+import {
+  LoginFieldErrors,
+  validateLoginFields,
+} from "../../utils/login-validation";
 
 function getFriendlyLoginError(err: ApiError): string {
   if (err.code === "AUTH_INVALID_CREDENTIALS" || err.status === 401) {
@@ -74,36 +80,18 @@ export function LoginScreen() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
 
+  // Kiểm tra dữ liệu trước khi tạo phiên; lựa chọn ghi nhớ không bao giờ lưu mật khẩu.
   const handleLogin = async () => {
+    if (isSubmitting) return;
     const trimmedInput = usernameOrEmail.trim();
-    if (!trimmedInput) {
-      setErrorMessage("Vui lòng nhập tên đăng nhập hoặc email.");
-      return;
-    }
-    if (trimmedInput.length < 3) {
-      setErrorMessage("Tên đăng nhập hoặc email phải có ít nhất 3 ký tự.");
-      return;
-    }
-    if (trimmedInput.length > 255) {
-      setErrorMessage(
-        "Tên đăng nhập hoặc email không được vượt quá 255 ký tự.",
-      );
-      return;
-    }
-    if (!password) {
-      setErrorMessage("Vui lòng nhập mật khẩu.");
-      return;
-    }
-    if (password.length < 8) {
-      setErrorMessage("Mật khẩu phải có ít nhất 8 ký tự.");
-      return;
-    }
-    if (password.length > 128) {
-      setErrorMessage("Mật khẩu không được vượt quá 128 ký tự.");
-      return;
-    }
+    const validation = validateLoginFields(trimmedInput, password);
+    setFieldErrors(validation);
+    setErrorMessage(null);
+    if (Object.keys(validation).length) return;
 
     setErrorMessage(null);
     setIsSubmitting(true);
@@ -111,11 +99,14 @@ export function LoginScreen() {
     const deviceInfo = `${Platform.OS} ${Platform.Version}`;
 
     try {
-      await login({
-        usernameOrEmail: trimmedInput,
-        password,
-        deviceInfo,
-      });
+      await login(
+        {
+          usernameOrEmail: trimmedInput,
+          password,
+          deviceInfo,
+        },
+        remember,
+      );
     } catch (err) {
       if (__DEV__) {
         console.warn("[LoginScreen Error]:", err);
@@ -172,8 +163,13 @@ export function LoginScreen() {
                 label="Tên đăng nhập hoặc Email"
                 placeholder="Ví dụ: an.nguyen hoặc an.nguyen@company.vn"
                 value={usernameOrEmail}
+                error={fieldErrors.usernameOrEmail}
                 onChangeText={(text) => {
                   setUsernameOrEmail(text);
+                  setFieldErrors((current) => ({
+                    ...current,
+                    usernameOrEmail: undefined,
+                  }));
                   if (errorMessage) setErrorMessage(null);
                 }}
                 autoCapitalize="none"
@@ -186,8 +182,13 @@ export function LoginScreen() {
                 label="Mật khẩu"
                 placeholder="Nhập mật khẩu"
                 value={password}
+                error={fieldErrors.password}
                 onChangeText={(text) => {
                   setPassword(text);
+                  setFieldErrors((current) => ({
+                    ...current,
+                    password: undefined,
+                  }));
                   if (errorMessage) setErrorMessage(null);
                 }}
                 isPassword
@@ -195,6 +196,35 @@ export function LoginScreen() {
                 onSubmitEditing={handleLogin}
               />
 
+              {/* Ghi nhớ chỉ áp dụng cho lần đăng nhập này; quên mật khẩu dùng hướng dẫn giống Web. */}
+              <View style={styles.loginOptions}>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{
+                    checked: remember,
+                    disabled: isSubmitting,
+                  }}
+                  onPress={() => setRemember((current) => !current)}
+                  disabled={isSubmitting}
+                  style={styles.rememberOption}
+                >
+                  <Text style={styles.optionText}>
+                    {remember ? "☑" : "☐"} Ghi nhớ đăng nhập
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    Alert.alert(
+                      "Quên mật khẩu?",
+                      "Vui lòng liên hệ quản trị viên để đặt lại mật khẩu.",
+                    )
+                  }
+                  style={styles.rememberOption}
+                >
+                  <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+                </Pressable>
+              </View>
               <Button
                 title="Đăng nhập"
                 onPress={handleLogin}
@@ -217,6 +247,15 @@ export function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  loginOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: spacing.xs,
+  },
+  rememberOption: { minHeight: 44, justifyContent: "center" },
+  optionText: { color: colors.textSecondary, fontSize: typography.sm.fontSize },
+  forgotText: { color: colors.primary, fontSize: typography.sm.fontSize },
   safeArea: {
     flex: 1,
     backgroundColor: colors.bgApp,

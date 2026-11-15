@@ -67,3 +67,7 @@ export interface PayslipDetail {
   amounts: PayrollAmounts;
   salaryProfileId?: number;
 }
+
+// API theo kỳ phân biệt thiếu phiếu với chưa công bố; deep link cũ chỉ biết phiếu chưa khả dụng.
+export type PayslipAvailability =
+  "not-found" | "not-published" | "unavailable" | null;

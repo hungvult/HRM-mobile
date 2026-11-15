@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Button } from "../button";
 import { Card } from "../card";
@@ -34,12 +34,11 @@ export function HeroPunchCard({
   todayData,
   loading,
   actionLoading,
-  isLocationReady = true,
   hasShift = true,
-  onRequestPermission,
   onCheckIn,
   onCheckOut,
 }: HeroPunchCardProps) {
+  // Nút gửi không bị khóa vì GPS: backend chấp nhận Wi-Fi công ty hoặc vị trí hợp lệ theo chế độ đã chốt.
   const isHoliday = todayData?.attendanceStatus === "HOLIDAY";
   const isNoShift = !hasShift || isHoliday;
 
@@ -161,7 +160,7 @@ export function HeroPunchCard({
             style={{ marginRight: 6 }}
           />
           <Text style={styles.readyInfoText}>
-            Sẵn sàng chấm công trong phạm vi văn phòng
+            Xác minh bằng Wi-Fi công ty hoặc GPS trong khu vực làm việc
           </Text>
         </View>
       )}
@@ -178,69 +177,25 @@ export function HeroPunchCard({
             textStyle={styles.completedButtonText}
           />
         ) : !isCheckedIn ? (
-          !isLocationReady ? (
-            /* Smart Disable CTA */
-            <Pressable
-              style={({ pressed }) => [
-                styles.smartDisableButton,
-                pressed && { opacity: 0.8 },
-              ]}
-              onPress={onRequestPermission}
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons
-                name="crosshairs-gps"
-                size={20}
-                color={colors.warning}
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.smartDisableText}>
-                Bật định vị để Check-in
-              </Text>
-            </Pressable>
-          ) : (
-            <Button
-              title="Check-in Bắt đầu ca"
-              variant="success"
-              loading={actionLoading}
-              disabled={loading}
-              onPress={onCheckIn}
-              style={styles.heroButton}
-              textStyle={styles.heroButtonText}
-            />
-          )
+          <Button
+            title="Check-in Bắt đầu ca"
+            variant="success"
+            loading={actionLoading}
+            disabled={loading}
+            onPress={onCheckIn}
+            style={styles.heroButton}
+            textStyle={styles.heroButtonText}
+          />
         ) : isCheckedIn && !isCheckedOut ? (
-          !isLocationReady ? (
-            /* Smart Disable CTA when checking out */
-            <Pressable
-              style={({ pressed }) => [
-                styles.smartDisableButton,
-                pressed && { opacity: 0.8 },
-              ]}
-              onPress={onRequestPermission}
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons
-                name="crosshairs-gps"
-                size={20}
-                color={colors.warning}
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.smartDisableText}>
-                Bật định vị để Check-out
-              </Text>
-            </Pressable>
-          ) : (
-            <Button
-              title="Check-out Kết thúc ca"
-              variant="warning"
-              loading={actionLoading}
-              disabled={loading}
-              onPress={onCheckOut}
-              style={styles.heroButton}
-              textStyle={styles.heroButtonText}
-            />
-          )
+          <Button
+            title="Check-out Kết thúc ca"
+            variant="warning"
+            loading={actionLoading}
+            disabled={loading}
+            onPress={onCheckOut}
+            style={styles.heroButton}
+            textStyle={styles.heroButtonText}
+          />
         ) : (
           <View style={styles.completedContainer}>
             <Button

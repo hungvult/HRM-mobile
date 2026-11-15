@@ -350,3 +350,104 @@ describe("Payroll API Service (Đặc tả API HRM - Lương Mục L11 & L12)", 
     });
   });
 });
+
+// API mới dùng chính request có xác thực, không mock payrollService để kiểm tra URL và chuẩn hóa thật.
+describe("UC019 API theo tháng/năm", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+  it.each([false, true])(
+    "cùng cấu trúc chi tiết, snapshot nested=%s",
+    async (nested) => {
+      const { mockDetailData } = await import("./fixtures");
+      const payload = nested
+        ? {
+            payrollRunId: 88,
+            year: 2026,
+            month: 9,
+            publishedAt: mockDetailData.publishedAt,
+            item: {
+              id: 120,
+              employee: mockDetailData.employee,
+              work: mockDetailData.work,
+              amounts: mockDetailData.amounts,
+              salaryProfileId: 18,
+            },
+          }
+        : mockDetailData;
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => payload,
+      } as Response);
+      const detail = await payrollService.getMyPayslipByPeriod(2026, 9);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "/payroll/my-payslips/by-period?year=2026&month=9",
+        ),
+        expect.objectContaining({
+          method: "GET",
+          headers: expect.objectContaining({
+            Authorization: "Bearer mock-jwt-access-token",
+          }),
+        }),
+      );
+      expect(detail.period).toEqual(mockDetailData.period);
+      expect(detail.amounts).toEqual(mockDetailData.amounts);
+      expect(detail.employee).toEqual(mockDetailData.employee);
+      expect(detail.payrollRunId).toBe(88);
+    },
+  );
+  it.each(["PAYSLIP_NOT_FOUND", "PAYSLIP_NOT_AVAILABLE"])(
+    "giữ nguyên mã lỗi %s",
+    async (code) => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ status: 404, code, message: code }),
+      } as Response);
+      await expect(
+        payrollService.getMyPayslipByPeriod(2026, 9),
+      ).rejects.toMatchObject({ code });
+    },
+  );
+  it("logout trong lúc đọc body không trả snapshot của phiên cũ", async () => {
+    const { authStorage } = await import("@/services/auth-storage");
+    const { mockDetailData } = await import("./fixtures");
+    let finish!: (value: unknown) => void;
+    let started!: () => void;
+    const bodyStarted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const body = new Promise((resolve) => {
+      finish = resolve;
+    });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: () => {
+        started();
+        return body;
+      },
+    } as unknown as Response);
+    const loading = payrollService.getMyPayslipByPeriod(2026, 9);
+    await bodyStarted;
+    await authStorage.beginLogout();
+    finish(mockDetailData);
+    try {
+      await expect(loading).rejects.toMatchObject({
+        code: "AUTH_SESSION_ENDED",
+      });
+    } finally {
+      await authStorage.saveToken(
+        "mock-jwt-access-token",
+        authStorage.getSessionVersion(),
+        true,
+      );
+    }
+  });
+});

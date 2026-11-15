@@ -1,323 +1,196 @@
-import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// Mock payrollService
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/services", () => ({
   payrollService: {
     getMyPayslips: vi.fn(),
+    getMyPayslipByPeriod: vi.fn(),
     getMyPayslipDetail: vi.fn(),
   },
 }));
-
 import { usePayroll, usePayslipDetail } from "@/hooks/use-payroll";
 import { payrollService } from "@/services";
+import { mockDetailData } from "./fixtures";
+import { PayslipDetail } from "@/types/payroll";
 
-describe("Lưu đồ Điều khiển Phiếu lương Mobile (payroll-flow.drawio & UC019)", () => {
-  const mockPayslipsPage0 = {
-    content: [
-      {
-        payrollRunId: 88,
-        year: 2026,
-        month: 9,
-        netSalary: 23100000,
-        publishedAt: "2026-10-02T02:00:00Z",
-      },
-      {
-        payrollRunId: 87,
-        year: 2026,
-        month: 8,
-        netSalary: 22000000,
-        publishedAt: "2026-09-02T02:00:00Z",
-      },
-    ],
-    page: 0,
-    size: 20,
-    totalElements: 3,
-    totalPages: 2,
-    hasNext: true,
-  };
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  return { promise, resolve, reject };
+}
 
-  const mockPayslipsPage1 = {
-    content: [
-      {
-        payrollRunId: 86,
-        year: 2026,
-        month: 7,
-        netSalary: 21500000,
-        publishedAt: "2026-08-02T02:00:00Z",
-      },
-    ],
-    page: 1,
-    size: 20,
-    totalElements: 3,
-    totalPages: 2,
-    hasNext: false,
-  };
+beforeEach(() => {
+  vi.resetAllMocks();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 10, 24));
+});
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
-  const mockDetailData = {
-    payrollRunId: 88,
-    period: {
-      year: 2026,
-      month: 9,
-      isPeriodClosed: true,
-    },
-    publishedAt: "2026-10-02T02:00:00Z",
-    employee: {
-      id: 101,
-      employeeCode: "NV00101",
-      fullName: "Nguyễn Văn An",
-      department: {
-        id: 3,
-        code: "IT",
-        name: "Công nghệ thông tin",
-      },
-    },
-    work: {
-      standardWorkingDays: 22,
-      standardMinutesPerDay: 480,
-      paidMinutes: 10560,
-      paidWorkingDays: 22,
-    },
-    amounts: {
-      baseSalaryMonthly: 22000000,
-      allowanceMonthly: 2200000,
-      deductionMonthly: 1100000,
-      earnedBaseSalary: 22000000,
-      earnedAllowance: 2200000,
-      earnedDeduction: 1100000,
-      netSalary: 23100000,
-    },
-    salaryProfileId: 18,
-  };
-
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe("UC019: chọn tháng/năm và chi tiết trực tiếp", () => {
+  it("mặc định tháng/năm hôm nay và không gọi API danh sách", async () => {
+    vi.mocked(payrollService.getMyPayslipByPeriod).mockResolvedValue({
+      ...mockDetailData,
+      period: { year: 2026, month: 11 },
+    });
+    const { result } = renderHook(() => usePayroll());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(payrollService.getMyPayslipByPeriod).toHaveBeenCalledWith(2026, 11);
+    expect(payrollService.getMyPayslips).not.toHaveBeenCalled();
+    expect(result.current.detail?.amounts.netSalary).toBe(23100000);
+    expect(result.current.selectedMonth).toBe(11);
+    expect(result.current.selectedYear).toBe(2026);
   });
 
-  // =========================================================================
-  // GIAI ĐOẠN 1: KHỞI TẠO TAB 4 & DANH SÁCH KỲ LƯƠNG ĐÃ CÔNG BỐ (lane_phase1)
-  // =========================================================================
-  describe("Giai đoạn 1: Danh sách kỳ lương cá nhân (lane_phase1 - P1T-265)", () => {
-    it("[TC-FLOW-P1-01] Khởi tạo Tab 4 nạp danh sách kỳ lương khi mount (p1_start -> p1_fetch_l11 -> p1_list_screen)", async () => {
-      vi.mocked(payrollService.getMyPayslips).mockResolvedValue(
-        mockPayslipsPage0,
-      );
-
-      const { result } = renderHook(() => usePayroll());
-
-      expect(result.current.isLoading).toBe(true);
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(payrollService.getMyPayslips).toHaveBeenCalledWith({
-        page: 0,
-        size: 20,
-        year: undefined,
-      });
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.payslips).toHaveLength(2);
-      expect(result.current.page).toBe(0);
-      expect(result.current.totalElements).toBe(3);
-      expect(result.current.hasNext).toBe(true);
-      expect(result.current.selectedPeriodId).toBe(88);
-      expect(result.current.selectedPayslip?.netSalary).toBe(23100000);
-      expect(result.current.error).toBeNull();
+  it("đổi tháng và năm tải đúng kỳ, không dùng ID đợt lương làm tháng", async () => {
+    vi.mocked(payrollService.getMyPayslipByPeriod).mockResolvedValue(
+      mockDetailData,
+    );
+    const { result } = renderHook(() => usePayroll());
+    await act(async () => {
+      await Promise.resolve();
     });
-
-    it("[TC-FLOW-P1-02] Xử lý trạng thái danh sách rỗng (p1_dec_empty -> p1_empty_state)", async () => {
-      vi.mocked(payrollService.getMyPayslips).mockResolvedValue({
-        content: [],
-        page: 0,
-        size: 20,
-        totalElements: 0,
-        totalPages: 0,
-        hasNext: false,
-      });
-
-      const { result } = renderHook(() => usePayroll());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(result.current.payslips).toEqual([]);
-      expect(result.current.totalElements).toBe(0);
-      expect(result.current.selectedPeriodId).toBeNull();
-      expect(result.current.selectedPayslip).toBeNull();
-      expect(result.current.error).toBeNull();
+    await act(async () => {
+      result.current.setSelectedMonth(9);
+      result.current.setSelectedYear(2025);
     });
-
-    it("[TC-FLOW-P1-03] Lọc theo năm tự động đặt lại page = 0 và nạp lại dữ liệu (Year Filter)", async () => {
-      vi.mocked(payrollService.getMyPayslips).mockResolvedValue(
-        mockPayslipsPage0,
-      );
-
-      const { result } = renderHook(() => usePayroll());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      // Change year
-      await act(async () => {
-        result.current.setSelectedYear(2025);
-      });
-
-      expect(result.current.selectedYear).toBe(2025);
-      expect(payrollService.getMyPayslips).toHaveBeenCalledWith({
-        page: 0,
-        size: 20,
-        year: 2025,
-      });
-    });
-
-    it("[TC-FLOW-P1-04] Phân trang onEndReached (loadMore) khi hasNext == true", async () => {
-      vi.mocked(payrollService.getMyPayslips)
-        .mockResolvedValueOnce(mockPayslipsPage0)
-        .mockResolvedValueOnce(mockPayslipsPage1);
-
-      const { result } = renderHook(() => usePayroll());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(result.current.page).toBe(0);
-      expect(result.current.hasNext).toBe(true);
-      expect(result.current.payslips).toHaveLength(2);
-
-      await act(async () => {
-        await result.current.loadMore();
-      });
-
-      expect(payrollService.getMyPayslips).toHaveBeenCalledWith({
-        page: 1,
-        size: 20,
-        year: undefined,
-      });
-      expect(result.current.page).toBe(1);
-      expect(result.current.hasNext).toBe(false);
-      expect(result.current.payslips).toHaveLength(3);
-    });
-
-    it("[TC-FLOW-P1-05] Chặn gọi loadMore khi hasNext == false hoặc đang loading", async () => {
-      vi.mocked(payrollService.getMyPayslips).mockResolvedValue({
-        ...mockPayslipsPage0,
-        hasNext: false,
-      });
-
-      const { result } = renderHook(() => usePayroll());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(result.current.hasNext).toBe(false);
-      vi.clearAllMocks();
-
-      await act(async () => {
-        await result.current.loadMore();
-      });
-
-      expect(payrollService.getMyPayslips).not.toHaveBeenCalled();
-    });
-
-    it("[TC-FLOW-P1-06] Thao tác kéo làm mới (Pull-to-Refresh)", async () => {
-      vi.mocked(payrollService.getMyPayslips).mockResolvedValue(
-        mockPayslipsPage0,
-      );
-
-      const { result } = renderHook(() => usePayroll());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      await act(async () => {
-        await result.current.refresh();
-      });
-
-      expect(result.current.isRefreshing).toBe(false);
-      expect(result.current.payslips).toHaveLength(2);
-    });
-
-    it("[TC-FLOW-P1-07] Bật/tắt ẩn hiện số tiền (toggleAmountVisibility)", async () => {
-      vi.mocked(payrollService.getMyPayslips).mockResolvedValue(
-        mockPayslipsPage0,
-      );
-
-      const { result } = renderHook(() => usePayroll());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(result.current.isAmountHidden).toBe(false);
-
-      act(() => {
-        result.current.toggleAmountVisibility();
-      });
-      expect(result.current.isAmountHidden).toBe(true);
-
-      act(() => {
-        result.current.toggleAmountVisibility();
-      });
-      expect(result.current.isAmountHidden).toBe(false);
-    });
-
-    it("[TC-FLOW-P1-08] Xử lý lỗi tải danh sách (p1_err_server) & phục hồi bằng retry", async () => {
-      vi.mocked(payrollService.getMyPayslips).mockRejectedValueOnce(
-        new Error("Network Error"),
-      );
-
-      const { result } = renderHook(() => usePayroll());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(result.current.error).toBeDefined();
-
-      vi.mocked(payrollService.getMyPayslips).mockResolvedValueOnce(
-        mockPayslipsPage0,
-      );
-
-      await act(async () => {
-        await result.current.retry();
-      });
-
-      expect(result.current.error).toBeNull();
-      expect(result.current.payslips).toHaveLength(2);
-    });
-
-    it("[TC-FLOW-P1-09] Chọn kỳ lương (selectPeriod) cập nhật selectedPayslip", async () => {
-      vi.mocked(payrollService.getMyPayslips).mockResolvedValue(
-        mockPayslipsPage0,
-      );
-
-      const { result } = renderHook(() => usePayroll());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(result.current.selectedPeriodId).toBe(88);
-
-      act(() => {
-        result.current.selectPeriod(87);
-      });
-
-      expect(result.current.selectedPeriodId).toBe(87);
-      expect(result.current.selectedPayslip?.payrollRunId).toBe(87);
-      expect(result.current.selectedPayslip?.netSalary).toBe(22000000);
-    });
+    expect(payrollService.getMyPayslipByPeriod).toHaveBeenLastCalledWith(
+      2025,
+      9,
+    );
   });
 
-  // =========================================================================
-  // GIAI ĐOẠN 2: CHI TIẾT PHIẾU LƯƠNG CÁ NHÂN (lane_phase2 - P1T-266)
-  // =========================================================================
+  it("xóa ngay tiền cũ khi đổi kỳ và loại phản hồi kỳ cũ đến sau", async () => {
+    const old = deferred<PayslipDetail>();
+    const newest = {
+      ...mockDetailData,
+      payrollRunId: 90,
+      period: { year: 2026, month: 10 },
+    };
+    vi.mocked(payrollService.getMyPayslipByPeriod)
+      .mockResolvedValueOnce(mockDetailData)
+      .mockReturnValueOnce(old.promise)
+      .mockResolvedValueOnce(newest);
+    const { result } = renderHook(() => usePayroll());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      result.current.setSelectedMonth(9);
+    });
+    expect(result.current.detail).toBeNull();
+    expect(result.current.isLoading).toBe(true);
+    await act(async () => {
+      result.current.setSelectedMonth(10);
+    });
+    await act(async () => {
+      old.resolve(mockDetailData);
+    });
+    expect(result.current.detail).toEqual(newest);
+  });
+
+  it("lỗi request cũ không che phiếu mới; lỗi kỳ mới không giữ tiền cũ", async () => {
+    const old = deferred<PayslipDetail>();
+    vi.mocked(payrollService.getMyPayslipByPeriod)
+      .mockReturnValueOnce(old.promise)
+      .mockResolvedValueOnce(mockDetailData)
+      .mockRejectedValueOnce({ code: "PAYSLIP_NOT_AVAILABLE" });
+    const { result } = renderHook(() => usePayroll());
+    await act(async () => {
+      result.current.setSelectedMonth(9);
+    });
+    await act(async () => {
+      old.reject(new Error("old network error"));
+    });
+    expect(result.current.error).toBeNull();
+    await act(async () => {
+      result.current.setSelectedMonth(10);
+    });
+    expect(result.current.detail).toBeNull();
+    expect(result.current.errorCode).toBe("PAYSLIP_NOT_AVAILABLE");
+    expect(result.current.error).toContain("chưa được công bố");
+  });
+
+  it.each([
+    ["PAYSLIP_NOT_FOUND", "Chưa có phiếu lương"],
+    ["PAYSLIP_NOT_AVAILABLE", "chưa được công bố"],
+  ])("phân biệt lỗi %s", async (code, message) => {
+    vi.mocked(payrollService.getMyPayslipByPeriod).mockRejectedValue({ code });
+    const { result } = renderHook(() => usePayroll());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.detail).toBeNull();
+    expect(result.current.errorCode).toBe(code);
+    expect(result.current.availability).toBe(
+      code === "PAYSLIP_NOT_FOUND" ? "not-found" : "not-published",
+    );
+    expect(result.current.error).toContain(message);
+  });
+
+  it("tải lại đúng kỳ và giữ lựa chọn che tiền khi đổi kỳ", async () => {
+    vi.mocked(payrollService.getMyPayslipByPeriod).mockResolvedValue(
+      mockDetailData,
+    );
+    const { result } = renderHook(() => usePayroll());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => result.current.toggleAmountVisibility());
+    await act(async () => {
+      result.current.setSelectedMonth(9);
+    });
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(payrollService.getMyPayslipByPeriod).toHaveBeenLastCalledWith(
+      2026,
+      9,
+    );
+    expect(result.current.isAmountHidden).toBe(true);
+    expect(result.current.isRefreshing).toBe(false);
+  });
+
+  it("retry sau lỗi không tự lấy kỳ khác và không tự retry API", async () => {
+    vi.mocked(payrollService.getMyPayslipByPeriod)
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(mockDetailData);
+    const { result } = renderHook(() => usePayroll());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(payrollService.getMyPayslipByPeriod).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await result.current.retry();
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.detail).toEqual(mockDetailData);
+  });
+
+  it("deep link đổi runId không nhận snapshot request cũ", async () => {
+    const old = deferred<PayslipDetail>();
+    vi.mocked(payrollService.getMyPayslipDetail)
+      .mockReturnValueOnce(old.promise)
+      .mockResolvedValueOnce({ ...mockDetailData, payrollRunId: 90 });
+    const { result, rerender } = renderHook(({ id }) => usePayslipDetail(id), {
+      initialProps: { id: 88 },
+    });
+    await act(async () => {
+      rerender({ id: 90 });
+    });
+    await act(async () => {
+      old.resolve(mockDetailData);
+    });
+    expect(result.current.detail?.payrollRunId).toBe(90);
+  });
+
   describe("Giai đoạn 2: Chi tiết phiếu lương cá nhân (lane_phase2 - P1T-266)", () => {
     it("[TC-FLOW-P2-01] Nạp chi tiết phiếu lương thành công qua usePayslipDetail (p2_fetch_l12 -> p2_render_voucher)", async () => {
       vi.mocked(payrollService.getMyPayslipDetail).mockResolvedValue(
@@ -373,6 +246,7 @@ describe("Lưu đồ Điều khiển Phiếu lương Mobile (payroll-flow.drawio
       expect(result.current.detail).toBeNull();
       expect(result.current.errorCode).toBe("PAYSLIP_NOT_AVAILABLE");
       expect(result.current.error).toBe("Phiếu lương chưa khả dụng.");
+      expect(result.current.availability).toBe("unavailable");
     });
 
     it("[TC-FLOW-P2-04] Xử lý lỗi mạng / 500 khi nạp chi tiết và phục hồi bằng retry", async () => {
