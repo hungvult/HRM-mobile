@@ -25,19 +25,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(newToken);
     });
 
+    // Khởi động chỉ khôi phục phiên còn hợp lệ; logout hoặc login mới sẽ làm mã phiên này hết hiệu lực.
     async function initAuth() {
+      const version = authStorage.getSessionVersion();
       try {
         const savedToken = await authStorage.getToken();
         if (savedToken) {
           try {
             const newToken = await authService.refreshAccessToken();
-            setAccessToken(newToken);
+            if (authStorage.isCurrentSession(version)) setAccessToken(newToken);
           } catch (error: any) {
             if (error?.code === "NETWORK_ERROR" || error?.status === 0) {
-              setAccessToken(savedToken);
+              if (authStorage.isCurrentSession(version))
+                setAccessToken(savedToken);
             } else {
-              await authStorage.clearAuth();
-              setAccessToken(null);
+              if (authStorage.isCurrentSession(version)) {
+                await authStorage.clearAuth();
+                setAccessToken(null);
+              }
             }
           }
         }
@@ -55,20 +60,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // AuthService đã lưu token tuần tự; provider chỉ cập nhật UI nếu người dùng chưa kết thúc phiên vừa tạo.
   const login = useCallback(async (credentials: LoginRequest) => {
     const response = await authService.login(credentials);
-    await authStorage.saveToken(response.accessToken);
-    setAccessToken(response.accessToken);
+    if (authStorage.isCurrentSession(authStorage.getSessionVersion()))
+      setAccessToken(response.accessToken);
   }, []);
 
+  // Đóng màn nghiệp vụ ngay, rồi để service thu hồi phiên; chuyển lỗi cho màn hình thông báo kết quả chưa xác nhận.
   const logout = useCallback(async () => {
+    setAccessToken(null);
     try {
       await authService.logout();
-    } catch {
-      // Idempotent: even if server fails, always wipe local session
     } finally {
       setAccessToken(null);
-      await authStorage.clearAuth();
     }
   }, []);
 
