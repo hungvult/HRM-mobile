@@ -46,8 +46,8 @@ export function VerificationBanner({
               <Text style={styles.alertTitle}>Chưa cấp quyền vị trí</Text>
             </View>
             <Text style={styles.alertDescription}>
-              Ứng dụng cần quyền vị trí để xác thực bạn đang ở trong khuôn viên
-              công ty.
+              Bạn vẫn có thể chấm công bằng Wi-Fi công ty. Cấp quyền vị trí để
+              dùng GPS khi cần.
             </Text>
           </View>
           <Pressable
@@ -76,8 +76,8 @@ export function VerificationBanner({
               <Text style={styles.alertTitle}>Định vị GPS đang tắt</Text>
             </View>
             <Text style={styles.alertDescription}>
-              Vui lòng bật dịch vụ định vị (Location) trên máy để thực hiện chấm
-              công.
+              Bật GPS để xác minh vị trí hoặc chấm công khi kết nối Wi-Fi công
+              ty.
             </Text>
           </View>
           <Pressable

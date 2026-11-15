@@ -30,6 +30,14 @@
       "expo-secure-store",
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép chọn ảnh minh chứng cho đơn nghỉ phép.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Cho phép ứng dụng truy cập vị trí để xác thực bạn đang ở trong khuôn viên công ty."

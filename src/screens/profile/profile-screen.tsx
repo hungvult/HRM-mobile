@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import { Button, Card, InfoField, MainTopBar } from "../../components";
 import { colors, radius, spacing, typography } from "../../constants";
 import { useAuth, useUser } from "../../hooks";
@@ -33,7 +32,7 @@ function CopyIcon({ color }: { color: string }) {
 }
 
 export function ProfileScreen() {
-  const router = useRouter();
+  // Mobile chỉ xem hồ sơ liên kết với phiên hiện tại; không mở form hoặc gửi yêu cầu cập nhật nhân viên.
   const { logout, isLoading: isAuthLoading } = useAuth();
   const { user, employee, isLoading, isRefreshing, error, refreshUser } =
     useUser();
@@ -52,10 +51,16 @@ export function ProfileScreen() {
     };
   }, []);
 
+  // Phiên cục bộ đã đóng kể cả lỗi mạng; báo rõ nếu server chưa xác nhận thu hồi phiên.
   const performLogout = async () => {
     setIsLoggingOut(true);
     try {
       await logout();
+    } catch {
+      Alert.alert(
+        "Đăng xuất",
+        "Đã đăng xuất trên thiết bị. Chưa thể xác nhận hủy phiên trên máy chủ do lỗi kết nối.",
+      );
     } finally {
       if (isMountedRef.current) {
         setIsLoggingOut(false);
@@ -306,15 +311,6 @@ export function ProfileScreen() {
             <Card style={styles.sectionCard}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionHeaderTitle}>Thông tin cá nhân</Text>
-                <TouchableOpacity
-                  style={styles.editButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  onPress={() => router.push("/edit-profile")}
-                  accessibilityRole="button"
-                  accessibilityLabel="Chỉnh sửa thông tin cá nhân"
-                >
-                  <Text style={styles.editButtonText}>Chỉnh sửa</Text>
-                </TouchableOpacity>
               </View>
               <InfoField label="Họ và tên" value={employee.fullName} />
               <InfoField
@@ -555,17 +551,6 @@ const styles = StyleSheet.create({
     lineHeight: typography.base.lineHeight,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
-  },
-  editButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySubtle,
-  },
-  editButtonText: {
-    fontSize: typography.xs.fontSize,
-    fontWeight: typography.weights.semibold,
-    color: colors.primary,
   },
   actionSection: {
     marginTop: spacing.md,

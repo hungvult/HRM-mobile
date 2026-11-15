@@ -17,20 +17,25 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Image,
+  AppState,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, Card, Input, DatePickerModal } from "../../components";
 import { colors, radius, spacing, typography } from "../../constants";
-import { leaveService } from "../../services";
-import { LeaveBalanceItem, LeaveType } from "../../types";
+import { authStorage, leaveService } from "../../services";
 import {
-  formatDate,
-  getFriendlyErrorMessage,
-  parseWorkDate,
-} from "../../utils";
+  LeaveAttachmentUpload,
+  LeaveBalanceItem,
+  LeaveType,
+} from "../../types";
+import { getLeaveAttachment, getLeaveDatePreview } from "./leave-form-helpers";
+import { formatDate, getFriendlyErrorMessage } from "../../utils";
 
+// Ngày hiển thị theo lịch cục bộ của thiết bị, không đổi sang UTC làm lệch ngày chọn.
 function formatDateToIso(d: Date): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -38,11 +43,34 @@ function formatDateToIso(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Form UC013 đọc danh mục/quỹ phép của nhân viên đang đăng nhập, cho chọn ngày và một ảnh tùy chọn.
+ * Tổng ngày chỉ là dự kiến Thứ Hai–Thứ Sáu; backend tính lại và kiểm tra quỹ với loại hưởng lương.
+ * Gửi một POST rồi giữ nguyên form nếu lỗi; ảnh chỉ được lưu cùng đơn khi backend thành công.
+ */
 export function CreateLeaveScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  const todayIso = useMemo(() => formatDateToIso(new Date()), []);
+  const [todayIso, setTodayIso] = useState(() => formatDateToIso(new Date()));
+  // Mốc khởi tạo chỉ dùng nhận biết người dùng sửa form; lịch sang ngày mới không phải thao tác chỉnh sửa.
+  const initialDateRef = useRef(todayIso);
+
+  // Form có thể mở qua nửa đêm hoặc nằm nền nhiều ngày; cập nhật ngày để preview/lịch chặn ngày đã qua.
+  useEffect(() => {
+    const updateToday = () => setTodayIso(formatDateToIso(new Date()));
+    const now = new Date();
+    const nextDay = new Date(now);
+    nextDay.setHours(24, 0, 0, 50);
+    const timer = setTimeout(updateToday, nextDay.getTime() - now.getTime());
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") updateToday();
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
+  }, [todayIso]);
 
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [balances, setBalances] = useState<LeaveBalanceItem[]>([]);
@@ -53,6 +81,11 @@ export function CreateLeaveScreen() {
   const [startDate, setStartDate] = useState<string>(todayIso);
   const [endDate, setEndDate] = useState<string>(todayIso);
   const [reason, setReason] = useState<string>("");
+  const [attachment, setAttachment] = useState<LeaveAttachmentUpload | null>(
+    null,
+  );
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isPickingImage, setIsPickingImage] = useState(false);
 
   const [startDateError, setStartDateError] = useState<string | null>(null);
   const [endDateError, setEndDateError] = useState<string | null>(null);
@@ -65,6 +98,9 @@ export function CreateLeaveScreen() {
   );
 
   const isSavedRef = useRef<boolean>(false);
+  const screenSessionRef = useRef(authStorage.getSessionVersion());
+  const submittingRef = useRef(false);
+  const pickingImageRef = useRef(false);
   const isMountedRef = useRef<boolean>(true);
   const scrollViewRef = useRef<ScrollView>(null);
   const startDateInputRef = useRef<TextInput>(null);
@@ -198,17 +234,31 @@ export function CreateLeaveScreen() {
     return balances.find((b) => b.leaveTypeId === selectedTypeId) || null;
   }, [balances, selectedTypeId]);
 
-  const remainingDays = selectedBalance?.remainingDays ?? 0;
+  // Đổi khoảng ngày cập nhật ngay phần dự kiến; chỉ gửi ID loại phép, không gửi số ngày app tính.
+  const datePreview = useMemo(
+    () => getLeaveDatePreview(startDate, endDate, todayIso),
+    [startDate, endDate, todayIso],
+  );
 
   const isDirty = useMemo(() => {
     return (
-      reason.trim().length > 0 || startDate !== todayIso || endDate !== todayIso
+      !!attachment ||
+      reason.trim().length > 0 ||
+      startDate !== initialDateRef.current ||
+      endDate !== initialDateRef.current
     );
-  }, [reason, startDate, endDate, todayIso]);
+  }, [attachment, reason, startDate, endDate]);
 
   // Handle BeforeRemove listener for dirty form guard
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      // Logout luôn được rời form, không để cảnh báo dữ liệu chưa gửi giữ lại màn của phiên cũ.
+      if (!authStorage.isCurrentSession(screenSessionRef.current)) return;
+      // Chờ kết quả POST hiện tại trước khi rời màn để tránh gửi lại đơn từ một form khác.
+      if (submittingRef.current) {
+        e.preventDefault();
+        return;
+      }
       if (!isDirty || isSavedRef.current) {
         return;
       }
@@ -232,7 +282,7 @@ export function CreateLeaveScreen() {
     return unsubscribe;
   }, [navigation, isDirty]);
 
-  // Client Validation checks
+  // Chặn ngày sai/quá khứ/ngược hoặc chỉ có cuối tuần ngay tại form; backend vẫn kiểm tra lại.
   const validateForm = (): boolean => {
     let isValid = true;
     setStartDateError(null);
@@ -245,24 +295,14 @@ export function CreateLeaveScreen() {
       return false;
     }
 
-    const startObj = parseWorkDate(startDate);
-    const todayObj = parseWorkDate(todayIso);
-    if (isNaN(startObj.getTime())) {
-      setStartDateError("Ngày bắt đầu không hợp lệ (định dạng YYYY-MM-DD).");
-      isValid = false;
-    } else if (startObj.getTime() < todayObj.getTime()) {
-      setStartDateError("Không thể chọn ngày trong quá khứ.");
-      isValid = false;
-    }
-
-    const endObj = parseWorkDate(endDate);
-    if (isNaN(endObj.getTime())) {
-      setEndDateError("Ngày kết thúc không hợp lệ (định dạng YYYY-MM-DD).");
-      isValid = false;
-    } else if (endObj.getTime() < startObj.getTime()) {
-      setEndDateError("Ngày kết thúc không được trước ngày bắt đầu.");
-      isValid = false;
-    }
+    const preview = getLeaveDatePreview(
+      startDate,
+      endDate,
+      formatDateToIso(new Date()),
+    );
+    setStartDateError(preview.startError);
+    setEndDateError(preview.endError);
+    if (preview.startError || preview.endError) isValid = false;
 
     if (reason.trim().length < 10) {
       setReasonError("Lý do xin nghỉ phải có ít nhất 10 ký tự.");
@@ -272,17 +312,60 @@ export function CreateLeaveScreen() {
     return isValid;
   };
 
+  /** Chọn một ảnh bằng thư viện hệ thống; hủy chọn/sai ảnh giữ ảnh cũ và chưa gọi API tạo đơn. */
+  const handlePickImage = async () => {
+    if (pickingImageRef.current || submittingRef.current) return;
+    pickingImageRef.current = true;
+    setIsPickingImage(true);
+    setAttachmentError(null);
+    const version = authStorage.getSessionVersion();
+    try {
+      // Chỉ chọn ảnh, không cắt/chuyển định dạng hoặc xin quyền camera/microphone.
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: false,
+        allowsEditing: false,
+        quality: 1,
+      });
+      if (!isMountedRef.current || !authStorage.isCurrentSession(version))
+        return;
+      if (!result.canceled && result.assets[0])
+        setAttachment(getLeaveAttachment(result.assets[0]));
+    } catch (err) {
+      if (isMountedRef.current && authStorage.isCurrentSession(version))
+        setAttachmentError(
+          err instanceof Error
+            ? err.message
+            : "Không thể chọn ảnh. Vui lòng thử lại.",
+        );
+    } finally {
+      pickingImageRef.current = false;
+      if (isMountedRef.current) setIsPickingImage(false);
+    }
+  };
+
+  /** Gửi dữ liệu form và ảnh tùy chọn một lần; khóa bằng ref ngay cả trước lượt render tiếp theo. */
   const handleSubmit = async () => {
+    if (submittingRef.current || pickingImageRef.current || isSavedRef.current)
+      return;
     if (!validateForm() || !selectedTypeId) return;
 
+    submittingRef.current = true;
+    const version = authStorage.getSessionVersion();
     setIsSubmitting(true);
     try {
-      await leaveService.createLeaveRequest({
-        leaveTypeId: selectedTypeId,
-        startDate,
-        endDate,
-        reason: reason.trim(),
-      });
+      await leaveService.createLeaveRequest(
+        {
+          leaveTypeId: selectedTypeId,
+          startDate,
+          endDate,
+          reason: reason.trim(),
+        },
+        attachment,
+      );
+
+      if (!isMountedRef.current || !authStorage.isCurrentSession(version))
+        return;
 
       isSavedRef.current = true;
       Alert.alert(
@@ -296,6 +379,8 @@ export function CreateLeaveScreen() {
         ],
       );
     } catch (err: any) {
+      if (!isMountedRef.current || !authStorage.isCurrentSession(version))
+        return;
       const friendlyMsg = getFriendlyErrorMessage(
         err,
         "Không thể gửi đơn nghỉ phép. Vui lòng thử lại sau.",
@@ -308,9 +393,20 @@ export function CreateLeaveScreen() {
       ) {
         Alert.alert("Không thể gửi đơn", friendlyMsg, [{ text: "Đã hiểu" }]);
       } else {
-        setGeneralError(friendlyMsg);
+        // Mất phản hồi không chứng minh POST thất bại; người dùng cần kiểm tra đơn đã lưu trước khi tự gửi lại.
+        const uncertainResult =
+          err?.code === "NETWORK_ERROR" ||
+          err?.code === "TIMEOUT_ERROR" ||
+          err?.status === 0 ||
+          err?.status === 408;
+        setGeneralError(
+          uncertainResult
+            ? `${friendlyMsg} Vui lòng kiểm tra danh sách đơn trước khi gửi lại.`
+            : friendlyMsg,
+        );
       }
     } finally {
+      submittingRef.current = false;
       if (isMountedRef.current) {
         setIsSubmitting(false);
       }
@@ -341,8 +437,8 @@ export function CreateLeaveScreen() {
           <View style={styles.introCard}>
             <Text style={styles.introTitle}>Tạo đơn xin nghỉ</Text>
             <Text style={styles.introSubtitle}>
-              Hệ thống tự động tính ngày làm việc thực tế và đối chiếu với số dư
-              quỹ phép năm của bạn.
+              Hệ thống tính ngày làm việc từ Thứ Hai đến Thứ Sáu. Phép không
+              hưởng lương không trừ quỹ phép.
             </Text>
           </View>
 
@@ -408,6 +504,7 @@ export function CreateLeaveScreen() {
                   return (
                     <Pressable
                       key={type.id}
+                      disabled={isSubmitting}
                       onPress={() => setSelectedTypeId(type.id)}
                       style={({ pressed }) => [
                         styles.typeChip,
@@ -469,7 +566,7 @@ export function CreateLeaveScreen() {
               onSubmitEditing={() => endDateInputRef.current?.focus()}
               onFocus={() => handleInputFocus(startDateInputRef)}
               onBlur={handleInputBlur}
-              error={startDateError || undefined}
+              error={startDateError || datePreview.startError || undefined}
               helperText={
                 startDate ? `Bắt đầu: ${formatDate(startDate)}` : undefined
               }
@@ -500,12 +597,16 @@ export function CreateLeaveScreen() {
               onSubmitEditing={() => reasonInputRef.current?.focus()}
               onFocus={() => handleInputFocus(endDateInputRef)}
               onBlur={handleInputBlur}
-              error={endDateError || undefined}
+              error={endDateError || datePreview.endError || undefined}
               helperText={
                 endDate ? `Kết thúc: ${formatDate(endDate)}` : undefined
               }
               editable={!isSubmitting}
             />
+            <Text style={styles.sectionTitle} accessibilityLiveRegion="polite">
+              Tổng ngày nghỉ dự kiến: {datePreview.days} ngày
+            </Text>
+            <Text>Chỉ tính Thứ Hai–Thứ Sáu, gồm ngày bắt đầu và kết thúc.</Text>
           </Card>
 
           {/* Card 3: Reason */}
@@ -534,13 +635,51 @@ export function CreateLeaveScreen() {
             />
           </Card>
 
+          {/* Ảnh tùy chọn chỉ nằm trong form, có thể thay hoặc xóa trước khi gửi. */}
+          <Card style={styles.formCard}>
+            <Text style={styles.sectionTitle}>Ảnh minh chứng (tùy chọn)</Text>
+            <Text>Một ảnh JPG, PNG hoặc WebP, tối đa 5 MB.</Text>
+            {attachment ? (
+              <>
+                <Image
+                  source={{ uri: attachment.uri }}
+                  style={styles.attachmentPreview}
+                  resizeMode="contain"
+                  accessibilityLabel="Ảnh minh chứng đã chọn"
+                />
+                <Text>{attachment.fileName}</Text>
+                <Button
+                  title="Xóa ảnh"
+                  variant="outline"
+                  disabled={isSubmitting || isPickingImage}
+                  onPress={() => {
+                    setAttachment(null);
+                    setAttachmentError(null);
+                  }}
+                />
+              </>
+            ) : null}
+            {attachmentError ? (
+              <Text accessibilityRole="alert" style={styles.errorBannerText}>
+                {attachmentError}
+              </Text>
+            ) : null}
+            <Button
+              title={attachment ? "Thay ảnh" : "Chọn ảnh"}
+              variant="outline"
+              onPress={handlePickImage}
+              loading={isPickingImage}
+              disabled={isSubmitting || isPickingImage}
+            />
+          </Card>
+
           {/* Action Buttons */}
           <View style={styles.buttonGroup}>
             <Button
               title="Gửi đơn nghỉ phép"
               onPress={handleSubmit}
               loading={isSubmitting}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isPickingImage || isSavedRef.current}
               style={styles.submitButton}
             />
             <Button
@@ -589,6 +728,7 @@ export function CreateLeaveScreen() {
 }
 
 const styles = StyleSheet.create({
+  attachmentPreview: { width: "100%", height: 220, marginVertical: spacing.md },
   safeArea: {
     flex: 1,
     backgroundColor: colors.bgApp,

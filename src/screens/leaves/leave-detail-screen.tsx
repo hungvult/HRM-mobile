@@ -7,13 +7,18 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Button, Card, InfoField } from "../../components";
+import { Button, Card, InfoField, Input } from "../../components";
 import { colors, radius, spacing, typography } from "../../constants";
-import { leaveService } from "../../services";
+import { authStorage, leaveService } from "../../services";
+import { MAX_CANCEL_REASON_LENGTH } from "./leave-form-helpers";
 import { LeaveRequestDetail } from "../../types";
 import {
   formatDateRange,
@@ -22,6 +27,11 @@ import {
   getLeaveStatusConfig,
 } from "../../utils";
 
+/**
+ * UC014 đọc đơn theo ID trên route và lịch sử do backend trả; ảnh được tải riêng bằng bearer.
+ * Chỉ đơn PENDING mới mở modal hủy; lý do tùy chọn được lưu vào lịch sử trên backend.
+ * Màn hình không tự tính hoặc hoàn quỹ phép, nên phép không hưởng lương cũng không bị báo hoàn quỹ.
+ */
 export function LeaveDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -32,8 +42,21 @@ export function LeaveDetailScreen() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<{
+    id: number;
+    uri: string;
+  } | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [attachmentLoading, setAttachmentLoading] = useState(false);
 
   const isMountedRef = useRef<boolean>(true);
+  const cancellingRef = useRef(false);
+  const detailLoadRef = useRef(0);
+  const routeIdRef = useRef(requestId);
+  routeIdRef.current = requestId;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -42,22 +65,34 @@ export function LeaveDetailScreen() {
     };
   }, []);
 
+  // Khi đổi đơn/tải lại, chỉ phản hồi GET mới nhất của đúng ID route được cập nhật màn hình.
   const fetchDetail = useCallback(async () => {
-    if (!requestId) return;
+    const load = ++detailLoadRef.current;
+    const version = authStorage.getSessionVersion();
+    const isCurrent = () =>
+      isMountedRef.current &&
+      load === detailLoadRef.current &&
+      routeIdRef.current === requestId &&
+      authStorage.isCurrentSession(version);
+    if (!requestId || !Number.isSafeInteger(requestId) || requestId <= 0) {
+      setError("Mã đơn nghỉ phép không hợp lệ.");
+      setIsLoading(false);
+      return;
+    }
     setError(null);
     try {
       const data = await leaveService.getLeaveRequestDetail(requestId);
-      if (isMountedRef.current) {
+      if (isCurrent()) {
         setDetail(data);
       }
     } catch (err: any) {
-      if (isMountedRef.current) {
+      if (isCurrent()) {
         setError(
           getFriendlyErrorMessage(err, "Không thể tải chi tiết đơn nghỉ phép."),
         );
       }
     } finally {
-      if (isMountedRef.current) {
+      if (isCurrent()) {
         setIsLoading(false);
         setIsRefreshing(false);
       }
@@ -65,30 +100,88 @@ export function LeaveDetailScreen() {
   }, [requestId]);
 
   useEffect(() => {
+    setDetail(null);
+    setIsLoading(true);
+    setCancelModalVisible(false);
+    setCancelReason("");
     fetchDetail();
   }, [fetchDetail]);
+
+  // Metadata chỉ báo có ảnh; URL tải luôn được tạo từ ID đơn, không gửi bearer tới URL do server tùy ý trả.
+  useEffect(() => {
+    let active = true;
+    const version = authStorage.getSessionVersion();
+    setAttachmentPreview(null);
+    setAttachmentError(null);
+    setAttachmentLoading(false);
+    if (detail?.attachment && detail.id === requestId) {
+      setAttachmentLoading(true);
+      leaveService
+        .getAttachmentPreview(detail.id)
+        .then((uri) => {
+          if (active && authStorage.isCurrentSession(version))
+            setAttachmentPreview({ id: detail.id, uri });
+        })
+        .catch(() => {
+          if (active && authStorage.isCurrentSession(version))
+            setAttachmentError(
+              "Không thể tải ảnh minh chứng. Kéo xuống để thử tải lại.",
+            );
+        })
+        .finally(() => {
+          if (active && authStorage.isCurrentSession(version))
+            setAttachmentLoading(false);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [detail, requestId]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await fetchDetail();
   }, [fetchDetail]);
 
+  /**
+   * Xác nhận hủy đúng ID đơn đang xem. Ref chặn hai lượt nhấn trước khi React kịp khóa nút.
+   * Thành công dùng statusHistory mới để hiện note; lỗi giữ lý do và không tự gọi lại POST.
+   */
   const performCancel = async () => {
-    if (!requestId) return;
+    if (!requestId || cancellingRef.current || detail?.status !== "PENDING")
+      return;
+    if (cancelReason.trim().length > MAX_CANCEL_REASON_LENGTH) {
+      setCancelError("Lý do hủy đơn tối đa 1.000 ký tự.");
+      return;
+    }
+    cancellingRef.current = true;
+    const version = authStorage.getSessionVersion();
+    const isCurrent = () =>
+      isMountedRef.current &&
+      routeIdRef.current === requestId &&
+      authStorage.isCurrentSession(version);
+    setCancelError(null);
     setIsCancelling(true);
     try {
-      await leaveService.cancelLeaveRequest(requestId);
+      const result = await leaveService.cancelLeaveRequest(
+        requestId,
+        cancelReason,
+      );
+      if (!isCurrent()) return;
+      // GET cũ không được ghi đè trạng thái CANCELLED vừa nhận; không tự cộng lại bất kỳ quỹ phép nào.
+      detailLoadRef.current += 1;
+      setIsRefreshing(false);
+      setDetail((current) =>
+        current?.id === requestId ? { ...current, ...result } : current,
+      );
+      setCancelModalVisible(false);
+      setCancelReason("");
       Alert.alert(
         "Thành công",
-        "Đơn nghỉ phép của bạn đã được hủy thành công và hoàn trả số dư.",
-        [
-          {
-            text: "Xác nhận",
-            onPress: () => router.back(),
-          },
-        ],
+        "Đơn nghỉ phép của bạn đã được hủy thành công.",
       );
     } catch (err: any) {
+      if (!isCurrent()) return;
       const friendlyMsg = getFriendlyErrorMessage(
         err,
         "Không thể hủy đơn nghỉ phép. Vui lòng thử lại sau.",
@@ -98,6 +191,7 @@ export function LeaveDetailScreen() {
         err?.code === "LEAVE_REQUEST_NOT_CANCELLABLE" ||
         err?.status === 409
       ) {
+        setCancelModalVisible(false);
         Alert.alert("Không thể hủy", friendlyMsg, [
           {
             text: "Đã hiểu",
@@ -105,28 +199,21 @@ export function LeaveDetailScreen() {
           },
         ]);
       } else {
-        Alert.alert("Lỗi", friendlyMsg);
+        setCancelError(friendlyMsg);
       }
     } finally {
+      cancellingRef.current = false;
       if (isMountedRef.current) {
         setIsCancelling(false);
       }
     }
   };
 
+  // Mở/đóng modal không gọi API; chỉ nút xác nhận mới gửi yêu cầu hủy.
   const handleCancelPress = () => {
-    Alert.alert(
-      "Xác nhận hủy đơn",
-      `Bạn có chắc chắn muốn hủy đơn nghỉ phép #${detail?.requestCode}? Số ngày phép sẽ được hoàn trả lại vào quỹ phép của bạn.`,
-      [
-        { text: "Không", style: "cancel" },
-        {
-          text: "Hủy đơn",
-          style: "destructive",
-          onPress: performCancel,
-        },
-      ],
-    );
+    if (cancellingRef.current || detail?.status !== "PENDING") return;
+    setCancelError(null);
+    setCancelModalVisible(true);
   };
 
   if (isLoading && !detail) {
@@ -165,7 +252,7 @@ export function LeaveDetailScreen() {
     );
   }
 
-  if (!detail) return null;
+  if (!detail || detail.id !== requestId) return null;
 
   const statusConfig = getLeaveStatusConfig(detail.status);
   const isPending = detail.status === "PENDING";
@@ -234,6 +321,34 @@ export function LeaveDetailScreen() {
           />
           <InfoField label="Lý do xin nghỉ" value={detail.reason} isLast />
         </Card>
+
+        {/* Ảnh riêng tư chỉ hiển thị sau GET có bearer và kiểm tra phiên đăng nhập. */}
+        {detail.attachment ? (
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Ảnh minh chứng</Text>
+            <Text>{detail.attachment.fileName}</Text>
+            {attachmentLoading ? (
+              <ActivityIndicator
+                color={colors.primary}
+                accessibilityLabel="Đang tải ảnh minh chứng"
+              />
+            ) : null}
+            {attachmentPreview?.id === detail.id ? (
+              <Image
+                source={{ uri: attachmentPreview.uri }}
+                style={styles.attachmentPreview}
+                resizeMode="contain"
+                accessibilityLabel="Ảnh minh chứng đơn nghỉ phép"
+                onError={() =>
+                  setAttachmentError("Không thể hiển thị ảnh minh chứng.")
+                }
+              />
+            ) : null}
+            {attachmentError ? (
+              <Text accessibilityRole="alert">{attachmentError}</Text>
+            ) : null}
+          </Card>
+        ) : null}
 
         {/* Card 2: Approval Timeline */}
         <Card style={styles.sectionCard}>
@@ -312,6 +427,7 @@ export function LeaveDetailScreen() {
               variant="danger"
               onPress={handleCancelPress}
               loading={isCancelling}
+              disabled={isCancelling}
             />
           ) : (
             <Card style={styles.noticeCard}>
@@ -323,11 +439,67 @@ export function LeaveDetailScreen() {
           )}
         </View>
       </ScrollView>
+      <Modal
+        visible={cancelModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!cancellingRef.current) setCancelModalVisible(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Card style={styles.modalCard}>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={styles.sectionTitle}>
+                Xác nhận hủy đơn #{detail.requestCode}
+              </Text>
+              <Input
+                label="Lý do hủy đơn (tùy chọn)"
+                value={cancelReason}
+                onChangeText={(text) => {
+                  setCancelReason(text);
+                  setCancelError(null);
+                }}
+                multiline
+                numberOfLines={4}
+                maxLength={MAX_CANCEL_REASON_LENGTH}
+                helperText={`${cancelReason.length}/1.000 ký tự`}
+                editable={!isCancelling}
+                error={cancelError || undefined}
+              />
+              <Button
+                title="Xác nhận hủy đơn"
+                variant="danger"
+                onPress={performCancel}
+                loading={isCancelling}
+                disabled={isCancelling}
+              />
+              <Button
+                title="Đóng"
+                variant="outline"
+                onPress={() => setCancelModalVisible(false)}
+                disabled={isCancelling}
+              />
+            </ScrollView>
+          </Card>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  attachmentPreview: { width: "100%", height: 240, marginTop: spacing.md },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    padding: spacing.lg,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  modalCard: { maxHeight: "85%", width: "100%" },
   safeArea: {
     flex: 1,
     backgroundColor: colors.bgApp,

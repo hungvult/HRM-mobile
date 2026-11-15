@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,15 +16,10 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { NotificationItemCard } from "../../components/notifications";
 import { colors, radius, spacing, typography } from "../../constants";
-import { useNotifications } from "../../hooks";
-import { notificationService } from "../../services";
-import { NotificationItem } from "../../types";
-import {
-  formatDateTime,
-  getFriendlyErrorMessage,
-  getNotificationTypeConfig,
-} from "../../utils";
+import { useNotifications } from "../../hooks/use-notifications";
+import { formatDateTime, getNotificationTypeConfig } from "../../utils";
 
+/** Hiển thị nội dung thông báo trước; chỉ nút trong chi tiết mới mở đơn nghỉ phép liên quan. */
 export function NotificationsScreen() {
   const router = useRouter();
   const {
@@ -38,62 +34,36 @@ export function NotificationsScreen() {
     loadMore,
     refresh,
     retryList,
-    markOneAsRead,
+    markOneAsUnread,
+    isUpdatingRead,
+    selectedNotification,
+    isDetailLoading,
+    detailModalVisible,
+    detailError,
+    actionError,
+    openDetail,
+    closeDetail,
     markAllAsRead,
   } = useNotifications();
 
-  // Modal detail state for notifications without related entity or general notifications
-  const [selectedNotification, setSelectedNotification] =
-    useState<NotificationItem | null>(null);
-  const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-  const [detailModalVisible, setDetailModalVisible] = useState<boolean>(false);
-  const [detailError, setDetailError] = useState<string | null>(null);
+  // Khóa thao tác trong lúc PATCH đang chạy; hook xếp thứ tự để đọc tất cả không ghi đè lần chưa đọc mới.
+  const isReadAllDisabled = unreadCount === 0 || isUpdatingRead;
 
-  const handleItemPress = async (item: NotificationItem) => {
-    // 1. Mark as read if not already read
-    if (!item.read) {
-      markOneAsRead(item.id);
-    }
-
-    // 2. If it's linked to a leave request, navigate to leave detail
+  /** relatedEntity.id là ID đơn; ID thông báo vẫn chỉ dùng cho GET/PATCH thông báo. */
+  const openRelatedEntity = () => {
+    const entity = selectedNotification?.relatedEntity;
     if (
-      item.relatedEntity?.type === "LEAVE_REQUEST" &&
-      item.relatedEntity?.id
-    ) {
-      router.push({
-        pathname: "/leave-detail",
-        params: { id: String(item.relatedEntity.id) },
-      });
+      entity?.type !== "LEAVE_REQUEST" ||
+      !Number.isSafeInteger(entity.id) ||
+      entity.id <= 0
+    )
       return;
-    }
-
-    // 3. Otherwise, fetch detail (API 42) and show modal
-    setSelectedNotification(item);
-    setDetailModalVisible(true);
-    setDetailError(null);
-    setIsDetailLoading(true);
-
-    try {
-      const fullDetail = await notificationService.getNotificationDetail(
-        item.id,
-      );
-      setSelectedNotification(fullDetail);
-    } catch (err: any) {
-      setDetailError(
-        getFriendlyErrorMessage(err, "Không thể tải chi tiết thông báo."),
-      );
-    } finally {
-      setIsDetailLoading(false);
-    }
+    closeDetail();
+    router.push({
+      pathname: "/leave-detail",
+      params: { id: String(entity.id) },
+    });
   };
-
-  const closeModal = () => {
-    setDetailModalVisible(false);
-    setSelectedNotification(null);
-    setDetailError(null);
-  };
-
-  const isReadAllDisabled = unreadCount === 0 || isMarkingAllRead;
 
   const renderHeaderBar = () => (
     <View style={styles.topActionBar}>
@@ -185,6 +155,12 @@ export function NotificationsScreen() {
         </View>
       )}
 
+      {actionError && !detailModalVisible && (
+        <Text style={styles.modalErrorText} accessibilityRole="alert">
+          {actionError}
+        </Text>
+      )}
+
       {/* Loading Skeleton/Spinner on first load */}
       {isListLoading && notifications.length === 0 && !listError && (
         <View style={styles.loadingContainer}>
@@ -198,7 +174,7 @@ export function NotificationsScreen() {
         data={notifications}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
-          <NotificationItemCard item={item} onPress={handleItemPress} />
+          <NotificationItemCard item={item} onPress={openDetail} />
         )}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
@@ -215,12 +191,12 @@ export function NotificationsScreen() {
         }
       />
 
-      {/* Modal Notification Detail (API 42 fallback for non-leave items) */}
+      {/* Mọi loại thông báo đều có chi tiết và thao tác chưa đọc, kể cả thông báo có đơn liên quan. */}
       <Modal
         visible={detailModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={closeModal}
+        onRequestClose={closeDetail}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -254,26 +230,79 @@ export function NotificationsScreen() {
                   </Text>
                 </View>
 
-                {isDetailLoading ? (
-                  <View style={styles.modalLoading}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  </View>
-                ) : detailError ? (
-                  <Text style={styles.modalErrorText}>{detailError}</Text>
-                ) : (
+                <ScrollView style={styles.modalScroll}>
+                  {isDetailLoading ? (
+                    <View style={styles.modalLoading}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    </View>
+                  ) : detailError ? (
+                    <Text style={styles.modalErrorText}>{detailError}</Text>
+                  ) : (
+                    <>
+                      <Text style={styles.modalBodyText}>
+                        {selectedNotification.content}
+                      </Text>
+                      <Text style={styles.modalDateText}>
+                        {formatDateTime(selectedNotification.createdAt)}
+                      </Text>
+                    </>
+                  )}
+                </ScrollView>
+                {actionError && (
+                  <Text style={styles.modalErrorText} accessibilityRole="alert">
+                    {actionError}
+                  </Text>
+                )}
+                {!isDetailLoading && !detailError && (
                   <>
-                    <Text style={styles.modalBodyText}>
-                      {selectedNotification.content}
-                    </Text>
                     <Text style={styles.modalDateText}>
-                      {formatDateTime(selectedNotification.createdAt)}
+                      {selectedNotification.read ? "Đã đọc" : "Chưa đọc"}
                     </Text>
+                    <TouchableOpacity
+                      style={styles.modalSecondaryBtn}
+                      onPress={() => markOneAsUnread(selectedNotification.id)}
+                      disabled={isUpdatingRead || !selectedNotification.read}
+                      accessibilityRole="button"
+                      accessibilityState={{
+                        disabled: isUpdatingRead || !selectedNotification.read,
+                      }}
+                      accessibilityLabel="Đánh dấu chưa đọc"
+                    >
+                      <Text style={styles.readAllButtonText}>
+                        Đánh dấu chưa đọc
+                      </Text>
+                    </TouchableOpacity>
+                    {selectedNotification.relatedEntity?.type ===
+                      "LEAVE_REQUEST" &&
+                      selectedNotification.relatedEntity.id > 0 && (
+                        <TouchableOpacity
+                          style={styles.modalSecondaryBtn}
+                          onPress={openRelatedEntity}
+                          accessibilityRole="button"
+                          accessibilityLabel="Mở đơn nghỉ phép liên quan"
+                        >
+                          <Text style={styles.readAllButtonText}>
+                            Mở đơn nghỉ phép liên quan
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                   </>
                 )}
-
+                {detailError && (
+                  <TouchableOpacity
+                    style={styles.modalSecondaryBtn}
+                    onPress={() => openDetail(selectedNotification)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Thử lại tải thông báo"
+                  >
+                    <Text>Thử lại</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Đóng chi tiết thông báo"
                   style={styles.modalCloseBtn}
-                  onPress={closeModal}
+                  onPress={closeDetail}
                 >
                   <Text style={styles.modalCloseBtnText}>Đóng</Text>
                 </TouchableOpacity>
@@ -431,6 +460,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: "100%",
     maxWidth: 400,
+    maxHeight: "85%",
     backgroundColor: colors.bgSurface,
     borderRadius: radius.lg,
     padding: spacing.lg,
@@ -481,6 +511,13 @@ const styles = StyleSheet.create({
     lineHeight: typography.xs.lineHeight,
     color: colors.textDisabled,
     marginBottom: spacing.lg,
+  },
+  modalScroll: { flexGrow: 0 },
+  modalSecondaryBtn: {
+    minHeight: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: spacing.sm,
   },
   modalCloseBtn: {
     backgroundColor: colors.primary,

@@ -15,70 +15,69 @@ import {
 } from "../../constants";
 
 export interface PeriodSelectorProps {
-  selectedYear: number | null;
-  years: number[];
-  onSelectYear: (year: number | null) => void;
+  selectedYear: number;
+  selectedMonth: number;
+  onSelectYear: (year: number) => void;
+  onSelectMonth: (month: number) => void;
 }
 
+/** Chọn đúng năm và một trong 12 tháng; giữ tháng khi đổi năm, không có lựa chọn tất cả kỳ. */
 export function PeriodSelector({
   selectedYear,
-  years,
+  selectedMonth,
   onSelectYear,
+  onSelectMonth,
 }: PeriodSelectorProps) {
   return (
     <View style={styles.wrapper}>
+      {/* Năm tăng/giảm độc lập, giới hạn 2000–2100 theo bộ kiểm tra year của API. */}
+      <View style={styles.container}>
+        <TouchableOpacity
+          style={styles.pill}
+          disabled={selectedYear <= 2000}
+          onPress={() => onSelectYear(selectedYear - 1)}
+          accessibilityRole="button"
+          accessibilityLabel="Năm trước"
+        >
+          <Text>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.year} accessibilityLiveRegion="polite">
+          Năm {selectedYear}
+        </Text>
+        <TouchableOpacity
+          style={styles.pill}
+          disabled={selectedYear >= 2100}
+          onPress={() => onSelectYear(selectedYear + 1)}
+          accessibilityRole="button"
+          accessibilityLabel="Năm sau"
+        >
+          <Text>›</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.container}
       >
-        <TouchableOpacity
-          style={[
-            styles.pill,
-            selectedYear === null ? styles.pillActive : styles.pillInactive,
-          ]}
-          onPress={() => onSelectYear(null)}
-          accessibilityRole="button"
-          accessibilityLabel="Bộ lọc: Tất cả các năm"
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.pillText,
-              selectedYear === null
-                ? styles.pillTextActive
-                : styles.pillTextInactive,
-            ]}
+        {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+          <TouchableOpacity
+            key={month}
+            style={[styles.pill, month === selectedMonth && styles.active]}
+            onPress={() => onSelectMonth(month)}
+            accessibilityRole="button"
+            accessibilityLabel={`Tháng ${month}, năm ${selectedYear}`}
+            accessibilityState={{ selected: month === selectedMonth }}
           >
-            Tất cả
-          </Text>
-        </TouchableOpacity>
-
-        {years.map((year) => {
-          const isSelected = selectedYear === year;
-          return (
-            <TouchableOpacity
-              key={year}
+            <Text
               style={[
-                styles.pill,
-                isSelected ? styles.pillActive : styles.pillInactive,
+                styles.text,
+                month === selectedMonth && styles.activeText,
               ]}
-              onPress={() => onSelectYear(year)}
-              accessibilityRole="button"
-              accessibilityLabel={`Bộ lọc: Năm ${year}`}
-              activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.pillText,
-                  isSelected ? styles.pillTextActive : styles.pillTextInactive,
-                ]}
-              >
-                {year}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+              Tháng {month}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </View>
   );
@@ -98,7 +97,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   pill: {
-    minHeight: 36,
+    minHeight: touchTargets.min,
     minWidth: touchTargets.min,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -106,24 +105,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  pillActive: {
-    backgroundColor: colors.primary,
-  },
-  pillInactive: {
-    backgroundColor: colors.bgApp,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pillText: {
-    fontSize: typography.sm.fontSize,
-    lineHeight: typography.sm.lineHeight,
-  },
-  pillTextActive: {
-    color: "#FFFFFF",
+  active: { backgroundColor: colors.primary },
+  text: { fontSize: typography.sm.fontSize, color: colors.textSecondary },
+  activeText: { color: "#FFFFFF" },
+  year: {
+    flex: 1,
+    textAlign: "center",
+    color: colors.textPrimary,
     fontWeight: typography.weights.semibold,
-  },
-  pillTextInactive: {
-    color: colors.textSecondary,
-    fontWeight: typography.weights.regular,
   },
 });

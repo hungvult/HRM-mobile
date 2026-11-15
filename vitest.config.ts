@@ -13,6 +13,10 @@ export default defineConfig({
       ),
       "expo-location": path.resolve(__dirname, "tests/mocks/expo-location.ts"),
       "expo-network": path.resolve(__dirname, "tests/mocks/expo-network.ts"),
+      "expo-file-system": path.resolve(
+        __dirname,
+        "tests/mocks/expo-file-system.ts",
+      ),
     },
   },
   test: {
@@ -27,6 +31,10 @@ export default defineConfig({
       ),
       "expo-location": path.resolve(__dirname, "tests/mocks/expo-location.ts"),
       "expo-network": path.resolve(__dirname, "tests/mocks/expo-network.ts"),
+      "expo-file-system": path.resolve(
+        __dirname,
+        "tests/mocks/expo-file-system.ts",
+      ),
     },
   },
 });

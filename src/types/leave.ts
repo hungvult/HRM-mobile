@@ -32,6 +32,22 @@ export interface CreateLeaveRequestPayload {
   reason: string;
 }
 
+// Ảnh cục bộ do bộ chọn ảnh trả về; file chỉ có trên Web, uri dùng cho Android/iOS.
+export interface LeaveAttachmentUpload {
+  uri: string;
+  fileName: string;
+  contentType: "image/jpeg" | "image/png" | "image/webp";
+  sizeBytes: number;
+  file?: File;
+}
+
+export interface LeaveAttachmentMetadata {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  url: string;
+}
+
 export interface CreateLeaveRequestResponse {
   id: number;
   requestCode: string;
@@ -99,6 +115,7 @@ export interface LeaveRequestDetail {
   createdAt: string;
   updatedAt: string;
   statusHistory: LeaveStatusHistoryItem[];
+  attachment?: LeaveAttachmentMetadata | null;
 }
 
 export interface CancelLeaveRequestResponse {

@@ -1,5 +1,5 @@
-import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock notificationService
 vi.mock("@/services", () => ({
@@ -8,6 +8,7 @@ vi.mock("@/services", () => ({
     getUnreadCount: vi.fn(),
     getNotificationDetail: vi.fn(),
     markAsRead: vi.fn(),
+    markAsUnread: vi.fn(),
     markAllAsRead: vi.fn(),
   },
   leaveService: {
@@ -101,8 +102,10 @@ describe("Lưu đồ Điều khiển Thông báo Mobile (notification-flow.drawi
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
+
+  afterEach(cleanup);
 
   // =========================================================================
   // GIAI ĐOẠN 1: ĐỒNG BỘ BADGE CHƯA ĐỌC & DANH SÁCH THÔNG BÁO (lane_phase1)
@@ -316,9 +319,9 @@ describe("Lưu đồ Điều khiển Thông báo Mobile (notification-flow.drawi
   // =========================================================================
   describe("Giai đoạn 2: Luồng Đánh dấu tất cả đã đọc (lane_phase2)", () => {
     it("[TC-FLOW-P2-01] Bấm [Đọc tất cả] khi unreadCount > 0 thành công (p2_has_unread -> p2_api_read_all -> p2_success)", async () => {
-      vi.mocked(notificationService.getUnreadCount).mockResolvedValue({
-        unreadCount: 2,
-      });
+      vi.mocked(notificationService.getUnreadCount)
+        .mockResolvedValueOnce({ unreadCount: 2 })
+        .mockResolvedValue({ unreadCount: 0 });
       vi.mocked(notificationService.getNotifications).mockResolvedValue({
         ...mockNotificationsPage0,
         content: [
@@ -399,7 +402,7 @@ describe("Lưu đồ Điều khiển Thông báo Mobile (notification-flow.drawi
       });
 
       expect(result.current.isMarkingAllRead).toBe(false);
-      expect(result.current.listError).toContain(
+      expect(result.current.actionError).toContain(
         "Không thể đánh dấu đọc tất cả",
       );
       // State should not be changed to read
@@ -411,10 +414,10 @@ describe("Lưu đồ Điều khiển Thông báo Mobile (notification-flow.drawi
   // GIAI ĐOẠN 3: ĐÁNH DẤU ĐỌC 1 BẢN GHI (lane_phase3: p3_dec_is_read -> p3_api_read_one)
   // =========================================================================
   describe("Giai đoạn 3: Đánh dấu đọc 1 bản ghi (lane_phase3)", () => {
-    it("[TC-FLOW-P3-01] Chạm thông báo chưa đọc cập nhật optimistic và giảm unreadCount (p3_unread_yes -> p3_api_read_one)", async () => {
-      vi.mocked(notificationService.getUnreadCount).mockResolvedValue({
-        unreadCount: 3,
-      });
+    it("[TC-FLOW-P3-01] Đọc thông báo cập nhật từ PATCH và đồng bộ unreadCount (p3_unread_yes -> p3_api_read_one)", async () => {
+      vi.mocked(notificationService.getUnreadCount)
+        .mockResolvedValueOnce({ unreadCount: 3 })
+        .mockResolvedValue({ unreadCount: 2 });
       vi.mocked(notificationService.getNotifications).mockResolvedValue(
         mockNotificationsPage0,
       );

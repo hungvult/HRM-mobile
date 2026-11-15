@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, Platform } from "react-native";
 import * as Location from "expo-location";
 import * as Network from "expo-network";
@@ -9,7 +9,9 @@ import {
   TodayAttendance,
 } from "../types";
 import { toAttendanceLocation } from "../utils/attendance-location";
-import { ApiError } from "../services/api";
+import { optionalAttendanceLocation } from "../utils/optional-attendance-location";
+import { ApiError, assertCurrentAuthSession } from "../services/api";
+import { authStorage } from "../services/auth-storage";
 import { getFriendlyErrorMessage } from "../utils";
 
 export type AttendanceErrorType =
@@ -48,6 +50,7 @@ export interface AttendanceHookReturn {
 }
 
 export function useAttendance(): AttendanceHookReturn {
+  const actionInFlight = useRef(false);
   const [todayData, setTodayData] = useState<TodayAttendance | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
@@ -398,33 +401,55 @@ export function useAttendance(): AttendanceHookReturn {
   };
 
   const checkIn = async (): Promise<AttendanceActionResponse> => {
+    const session = authStorage.getSessionVersion();
+    assertCurrentAuthSession(session);
+    // Chặn hai lần bấm trong cùng một nhịp render; backend vẫn khóa bản công để bảo vệ nhiều thiết bị.
+    if (actionInFlight.current)
+      throw new Error("Đang xử lý chấm công. Vui lòng chờ.");
+    actionInFlight.current = true;
     setIsActionLoading(true);
     clearError();
     try {
-      const coords = await getCurrentCoords();
+      const coords = await optionalAttendanceLocation(getCurrentCoords);
+      // Người bấm phải vẫn là chủ phiên sau khi chờ GPS; không gửi thao tác của A bằng bearer mới của B.
+      assertCurrentAuthSession(session);
       const res = await attendanceService.checkIn(coords);
+      assertCurrentAuthSession(session);
       await fetchToday();
+      assertCurrentAuthSession(session);
       return res;
     } catch (err: any) {
       await handleApiError(err);
       throw err;
     } finally {
+      actionInFlight.current = false;
       setIsActionLoading(false);
     }
   };
 
   const checkOut = async (): Promise<AttendanceActionResponse> => {
+    const session = authStorage.getSessionVersion();
+    assertCurrentAuthSession(session);
+    // Check-out dùng cùng khóa thao tác với check-in để không gửi hai lệnh đối lập cùng lúc.
+    if (actionInFlight.current)
+      throw new Error("Đang xử lý chấm công. Vui lòng chờ.");
+    actionInFlight.current = true;
     setIsActionLoading(true);
     clearError();
     try {
-      const coords = await getCurrentCoords();
+      const coords = await optionalAttendanceLocation(getCurrentCoords);
+      // Dừng continuation thuộc tài khoản cũ trước khi service tự đọc token hiện tại.
+      assertCurrentAuthSession(session);
       const res = await attendanceService.checkOut(coords);
+      assertCurrentAuthSession(session);
       await fetchToday();
+      assertCurrentAuthSession(session);
       return res;
     } catch (err: any) {
       await handleApiError(err);
       throw err;
     } finally {
+      actionInFlight.current = false;
       setIsActionLoading(false);
     }
   };

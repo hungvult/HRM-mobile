@@ -560,3 +560,55 @@ describe("Notification API Service (Đặc tả API HRM - QLNghiPhep Mục 40 - 
     });
   });
 });
+
+// Kiểm tra endpoint mới qua API client thật, cùng shape như PATCH đã đọc.
+describe("UC020 API đánh dấu chưa đọc", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+  it("PATCH ID thông báo, trả read=false và readAt=null", async () => {
+    const payload = {
+      id: 101,
+      type: "LEAVE_APPROVED",
+      title: "Đơn đã duyệt",
+      content: "Chi tiết",
+      relatedEntity: { type: "LEAVE_REQUEST", id: 42 },
+      read: false,
+      readAt: null,
+      createdAt: "2026-11-24T09:00:00Z",
+    };
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => payload,
+    } as Response);
+    expect(await notificationService.markAsUnread(101)).toEqual(payload);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/notifications/101/unread"),
+      expect.objectContaining({
+        method: "PATCH",
+        headers: expect.objectContaining({
+          Authorization: "Bearer mock-jwt-access-token",
+        }),
+      }),
+    );
+  });
+  it("giữ nguyên NOTIFICATION_NOT_FOUND từ backend và không tự gọi lại", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        status: 404,
+        code: "NOTIFICATION_NOT_FOUND",
+        message: "Không tìm thấy thông báo.",
+      }),
+    } as Response);
+    await expect(notificationService.markAsUnread(999)).rejects.toMatchObject({
+      code: "NOTIFICATION_NOT_FOUND",
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});

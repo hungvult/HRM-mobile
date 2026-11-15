@@ -27,6 +27,7 @@ import {
 } from "../../constants";
 import { useAttendance, useUser } from "../../hooks";
 import { AttendanceActionResponse } from "../../types";
+import { useAttendancePrecheck } from "../../hooks/use-attendance-precheck";
 import {
   formatTime,
   getAvatarLetter,
@@ -34,6 +35,8 @@ import {
 } from "../../utils";
 
 export function HomeScreen() {
+  // Chỉ gửi GPS để BE kiểm tra ngầm; không thay đổi giao diện, trạng thái nút hay bước xác minh khi bấm chấm công.
+  useAttendancePrecheck();
   const router = useRouter();
   const { user, employee } = useUser();
   const {
